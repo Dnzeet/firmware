@@ -43,7 +43,7 @@ void _setup_gpio() {
 
     button_config_t bt1 = {
         .type = BUTTON_TYPE_GPIO,
-        .long_press_time = 250,
+        .long_press_time = 200,
         .short_press_time = 120,
         .gpio_button_config = {
             .gpio_num = DW_BTN,
@@ -53,7 +53,7 @@ void _setup_gpio() {
 
     button_config_t bt2 = {
         .type = BUTTON_TYPE_GPIO,
-        .long_press_time = 250,
+        .long_press_time = 200,
         .short_press_time = 120,
         .gpio_button_config = {
             .gpio_num = UP_BTN,
