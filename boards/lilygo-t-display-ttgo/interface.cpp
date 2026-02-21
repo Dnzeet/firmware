@@ -32,8 +32,9 @@ static void onButtonSingleClickCb2(void *button_handle, void *usr_data) { ecPres
 static void onButtonHoldCb2(void *button_handle, void *usr_data) { holdPrev = true; }
 static void onButtonDoubleClickCb2(void *button_handle, void *usr_data) { powerOffReq = true; }
 
-Button *btn1;
-Button *btn2;
+// Inisialisasi awal ke NULL (Penting untuk Memory Management)
+Button *btn1 = NULL;
+Button *btn2 = NULL;
 
 /***************************************************************************************/
 void _setup_gpio() {
@@ -41,35 +42,41 @@ void _setup_gpio() {
     pinMode(DW_BTN, INPUT_PULLUP);
     pinMode(UP_BTN, INPUT_PULLUP);
 
-    button_config_t bt1 = {
+    // Menggunakan static agar struktur data tidak dibuat ulang di stack setiap kali dipanggil
+    static button_config_t bt1 = {
         .type = BUTTON_TYPE_GPIO,
         .long_press_time = 200,
         .short_press_time = 120,
         .gpio_button_config = {
-            .gpio_num = DW_BTN,
+            .gpio_num = (gpio_num_t)DW_BTN,
             .active_level = 0,
         },
     };
 
-    button_config_t bt2 = {
+    static button_config_t bt2 = {
         .type = BUTTON_TYPE_GPIO,
         .long_press_time = 200,
         .short_press_time = 120,
         .gpio_button_config = {
-            .gpio_num = UP_BTN,
+            .gpio_num = (gpio_num_t)UP_BTN,
             .active_level = 0,
         },
     };
 
-    btn1 = new Button(bt1);
-    btn1->attachSingleClickEventCb(&onButtonSingleClickCb1, NULL);
-    btn1->attachLongPressStartEventCb(&onButtonHoldCb1, NULL);
-    btn1->attachDoubleClickEventCb(&onButtonDoubleClickCb1, NULL);
+    // FIX: Memory Leak Guard - Hanya alokasi jika btn belum ada
+    if (btn1 == NULL) {
+        btn1 = new Button(bt1);
+        btn1->attachSingleClickEventCb(&onButtonSingleClickCb1, NULL);
+        btn1->attachLongPressStartEventCb(&onButtonHoldCb1, NULL);
+        btn1->attachDoubleClickEventCb(&onButtonDoubleClickCb1, NULL);
+    }
 
-    btn2 = new Button(bt2);
-    btn2->attachSingleClickEventCb(&onButtonSingleClickCb2, NULL);
-    btn2->attachLongPressStartEventCb(&onButtonHoldCb2, NULL);
-    btn2->attachDoubleClickEventCb(&onButtonDoubleClickCb2, NULL);
+    if (btn2 == NULL) {
+        btn2 = new Button(bt2);
+        btn2->attachSingleClickEventCb(&onButtonSingleClickCb2, NULL);
+        btn2->attachLongPressStartEventCb(&onButtonHoldCb2, NULL);
+        btn2->attachDoubleClickEventCb(&onButtonDoubleClickCb2, NULL);
+    }
 
     pinMode(ADC_EN, OUTPUT);
     digitalWrite(ADC_EN, HIGH);
@@ -85,9 +92,11 @@ void _setup_gpio() {
 
 /*********************************************************************/
 void _setBrightness(uint8_t brightval) {
-    if (brightval == 0) analogWrite(TFT_BL, brightval);
-    else {
-        int bl = MINBRIGHT + round(((255 - MINBRIGHT) * brightval / 100));
+    if (brightval == 0) {
+        analogWrite(TFT_BL, 0);
+    } else {
+        // Optimasi: Menggunakan integer math daripada round() yang berat
+        int bl = MINBRIGHT + ((255 - MINBRIGHT) * (int)brightval / 100);
         analogWrite(TFT_BL, bl);
     }
 }
@@ -126,7 +135,7 @@ void InputHandler(void) {
         if (nxtPress || prvPress || ecPress || slPress || holdNext || holdPrev) {
             powerOffCountdown = false;
 
-            // clear tulisan countdown
+            // Clear tulisan countdown dengan latar belakang
             tft.fillRect(60, 12, 16 * LW, tft.fontHeight(1), bruceConfig.bgColor);
 
             nxtPress = prvPress = ecPress = slPress = false;
@@ -155,6 +164,7 @@ void InputHandler(void) {
     // ===== NORMAL INPUT =====
     if (nxtPress || prvPress || ecPress || slPress) btn_pressed = true;
 
+    // Throttle input agar tidak terlalu sensitif (Debounce logic)
     if (millis() - tm > 300 || LongPress) {
         if (btn_pressed) {
 
@@ -179,11 +189,11 @@ void InputHandler(void) {
 
 /*********************************************************************/
 void powerOff() {
-
     tft.fillScreen(bruceConfig.bgColor);
     digitalWrite(TFT_BL, LOW);
-    tft.writecommand(0x10);
+    tft.writecommand(0x10); // Enter Sleep Mode untuk LCD
 
+    // Memastikan pin tombol dapat membangunkan ESP32 dari Deep Sleep
     esp_sleep_enable_ext0_wakeup((gpio_num_t)UP_BTN, BTN_ACT);
     esp_deep_sleep_start();
 }
