@@ -46,7 +46,7 @@ void _setup_gpio() {
     if (btn1 == nullptr) {
         button_config_t bt1 = {
             .type = BUTTON_TYPE_GPIO,
-            .long_press_time = 250,
+            .long_press_time = 200,
             .short_press_time = 120,
             .gpio_button_config = {
                 .gpio_num = DW_BTN,
@@ -62,7 +62,7 @@ void _setup_gpio() {
     if (btn2 == nullptr) {
         button_config_t bt2 = {
             .type = BUTTON_TYPE_GPIO,
-            .long_press_time = 250,
+            .long_press_time = 200,
             .short_press_time = 120,
             .gpio_button_config = {
                 .gpio_num = UP_BTN,
@@ -159,7 +159,7 @@ void InputHandler(void) {
     // ===== NORMAL INPUT =====
     if (nxtPress || prvPress || ecPress || slPress) btn_pressed = true;
 
-    if (millis() - tm > 300 || LongPress) {
+    if (millis() - tm > 200 || LongPress) {
         if (btn_pressed) {
 
             btn_pressed = false;
