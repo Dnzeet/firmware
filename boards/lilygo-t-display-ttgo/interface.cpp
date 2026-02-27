@@ -4,34 +4,33 @@
 #include <globals.h>
 #include <interface.h>
 
-// [ Variabel Button Flags ]
+// ===== BUTTON FLAGS =====
 volatile bool nxtPress = false;
 volatile bool prvPress = false;
-volatile bool ecPress  = false;
-volatile bool slPress  = false;
+volatile bool ecPress = false;
+volatile bool slPress = false;
 volatile bool holdNext = false;
 volatile bool holdPrev = false;
-volatile bool powerOffReq = false;
 
-// [ Variabel State Power Off ]
+// ===== POWER OFF FLAGS =====
+volatile bool powerOffReq = false;
 bool powerOffCountdown = false;
 unsigned long powerOffStart = 0;
 int lastCount = -1;
 
+// ===== CALLBACKS BTN1 =====
+static void onButtonSingleClickCb1(void *button_handle, void *usr_data) { slPress = true; }
+static void onButtonHoldCb1(void *button_handle, void *usr_data) { holdNext = true; }
+static void onButtonDoubleClickCb1(void *button_handle, void *usr_data) { nxtPress = true; }
+
+// ===== CALLBACKS BTN2 =====
+static void onButtonSingleClickCb2(void *button_handle, void *usr_data) { ecPress = true; }
+static void onButtonHoldCb2(void *button_handle, void *usr_data) { holdPrev = true; }
+static void onButtonDoubleClickCb2(void *button_handle, void *usr_data) { powerOffReq = true; }
+
 Button *btn1 = nullptr;
 Button *btn2 = nullptr;
 
-// [ Callback Handler Tombol 1 - Down ]
-static void onButtonSingleClickCb1(void *b, void *d) { slPress = true; }
-static void onButtonHoldCb1(void *b, void *d)        { holdNext = true; }
-static void onButtonDoubleClickCb1(void *b, void *d) { nxtPress = true; }
-
-// [ Callback Handler Tombol 2 - Up ]
-static void onButtonSingleClickCb2(void *b, void *d) { ecPress = true; }
-static void onButtonHoldCb2(void *b, void *d)        { holdPrev = true; }
-static void onButtonDoubleClickCb2(void *b, void *d) { powerOffReq = true; }
-
-// [ Inisialisasi Hardware & Button ]
 void _setup_gpio() {
     pinMode(DW_BTN, INPUT_PULLUP);
     pinMode(UP_BTN, INPUT_PULLUP);
@@ -71,7 +70,6 @@ void _setup_gpio() {
     Serial.begin(115200);
 }
 
-// [ Pengaturan Kecerahan Layar ]
 void _setBrightness(uint8_t brightval) {
     if (brightval == 0) analogWrite(TFT_BL, 0);
     else {
@@ -80,18 +78,23 @@ void _setBrightness(uint8_t brightval) {
     }
 }
 
-// [ Perintah Masuk Mode Deep Sleep ]
-void powerOff() {
-    tft.fillScreen(bruceConfig.bgColor);
-    digitalWrite(TFT_BL, LOW);
-    tft.writecommand(0x10);
-    digitalWrite(ADC_EN, LOW);
-    esp_sleep_enable_ext0_wakeup((gpio_num_t)UP_BTN, BTN_ACT);
-    esp_deep_sleep_start();
-}
+void InputHandler(void) {
+    static unsigned long tm = 0;
+    static bool btn_pressed = false;
+    static unsigned long holdTimer = 0;
 
-// [ Manager Power Off - Panggil di Menu Utama saja ]
-void PowerManager() {
+    // Auto scroll hold logic
+    if (holdNext || holdPrev) {
+        if (millis() - holdTimer > 350) {
+            holdTimer = millis();
+            if (holdNext) nxtPress = true;
+            if (holdPrev) prvPress = true;
+        }
+        if (digitalRead(DW_BTN) == HIGH) holdNext = false;
+        if (digitalRead(UP_BTN) == HIGH) holdPrev = false;
+    }
+
+    // Power off countdown logic
     if (powerOffReq) {
         powerOffReq = false;
         powerOffCountdown = true;
@@ -103,11 +106,11 @@ void PowerManager() {
         if (nxtPress || prvPress || ecPress || slPress || holdNext || holdPrev) {
             powerOffCountdown = false;
             tft.fillRect(60, 12, 16 * LW, tft.fontHeight(1), bruceConfig.bgColor);
-            nxtPress = prvPress = ecPress = slPress = false; 
+            nxtPress = prvPress = ecPress = slPress = false;
             return;
         }
-
-        int countDown = 3 - ((millis() - powerOffStart) / 1000);
+        int elapsed = (millis() - powerOffStart) / 1000;
+        int countDown = 3 - elapsed;
         if (countDown != lastCount && countDown >= 0) {
             lastCount = countDown;
             tft.setCursor(60, 12);
@@ -115,31 +118,14 @@ void PowerManager() {
             tft.setTextColor(bruceConfig.priColor, bruceConfig.bgColor);
             tft.printf(" PWR OFF IN %d  ", countDown);
         }
-
         if (countDown < 0) {
             powerOffCountdown = false;
             powerOff();
+            return;
         }
     }
-}
 
-// [ Handler Input Navigasi - Panggil di Semua Menu ]
-void InputHandler() {
-    static unsigned long tm = 0;
-    static unsigned long holdTimer = 0;
-    static bool btn_pressed = false;
-
-    // Logika Auto-Scroll Hold
-    if (holdNext || holdPrev) {
-        if (millis() - holdTimer > 350) {
-            holdTimer = millis();
-            if (holdNext) nxtPress = true;
-            if (holdPrev) prvPress = true;
-        }
-        if (digitalRead(DW_BTN) == HIGH) holdNext = false;
-        if (digitalRead(UP_BTN) == HIGH) holdPrev = false;
-    }
-
+    // Main Input logic
     if (nxtPress || prvPress || ecPress || slPress) btn_pressed = true;
 
     if (millis() - tm > 200 || LongPress) {
@@ -148,7 +134,7 @@ void InputHandler() {
             tm = millis();
 
             if (wakeUpScreen()) {
-                nxtPress = prvPress = ecPress = slPress = powerOffReq = false;
+                nxtPress = prvPress = ecPress = slPress = false;
                 return; 
             }
             
@@ -161,4 +147,13 @@ void InputHandler() {
             nxtPress = prvPress = ecPress = slPress = false;
         }
     }
+}
+
+void powerOff() {
+    tft.fillScreen(bruceConfig.bgColor);
+    digitalWrite(TFT_BL, LOW);
+    tft.writecommand(0x10);
+    digitalWrite(ADC_EN, LOW);
+    esp_sleep_enable_ext0_wakeup((gpio_num_t)UP_BTN, BTN_ACT);
+    esp_deep_sleep_start();
 }
