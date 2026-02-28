@@ -21,7 +21,7 @@ bool powerOffCountdown = false;
 unsigned long powerOffStart = 0;
 int lastCount = -1;
 
-//dw btn dim
+// dw btn dim toggle
 void toggleScreen() {
     if (isScreenDimmed) {
         _setBrightness(bruceConfig.brightness); 
@@ -120,7 +120,11 @@ void InputHandler(void) {
         if (nxtPress || prvPress || ecPress || slPress || holdNext || holdPrev) {
             powerOffCountdown = false;
             tft.fillRect(60, 12, 16 * LW, tft.fontHeight(1), bruceConfig.bgColor);
-            nxtPress = prvPress = ecPress = slPress = false;
+            // Fix: Pecah assignment volatile
+            nxtPress = false; 
+            prvPress = false; 
+            ecPress = false; 
+            slPress = false;
             return;
         }
         int elapsed = (millis() - powerOffStart) / 1000;
@@ -144,7 +148,11 @@ void InputHandler(void) {
         if (isScreenDimmed) {
             _setBrightness(bruceConfig.brightness);
             isScreenDimmed = false;          
-            nxtPress = prvPress = ecPress = slPress = false; 
+            // Fix: Pecah assignment volatile
+            nxtPress = false; 
+            prvPress = false; 
+            ecPress = false; 
+            slPress = false; 
             tm = millis();
             return;
         }
@@ -157,7 +165,11 @@ void InputHandler(void) {
             tm = millis();
 
             if (wakeUpScreen()) {
-                nxtPress = prvPress = ecPress = slPress = false;
+                // Fix: Pecah assignment volatile
+                nxtPress = false; 
+                prvPress = false; 
+                ecPress = false; 
+                slPress = false;
                 return; 
             }
             
@@ -167,7 +179,11 @@ void InputHandler(void) {
             NextPress = nxtPress;
             PrevPress = prvPress;
 
-            nxtPress = prvPress = ecPress = slPress = false;
+            // Fix: Pecah assignment volatile
+            nxtPress = false; 
+            prvPress = false; 
+            ecPress = false; 
+            slPress = false;
         }
     }
 }
