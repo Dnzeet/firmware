@@ -12,32 +12,18 @@ volatile bool slPress = false;
 volatile bool holdNext = false;
 volatile bool holdPrev = false;
 
-// ===== SCREEN STATE =====
-volatile bool isScreenDimmed = false; 
-
 // ===== POWER OFF FLAGS =====
 volatile bool powerOffReq = false;
 bool powerOffCountdown = false;
 unsigned long powerOffStart = 0;
 int lastCount = -1;
 
-// dw btn dim toggle
-void toggleScreen() {
-    if (isScreenDimmed) {
-        _setBrightness(bruceConfig.brightness); 
-        isScreenDimmed = false;
-    } else {
-        _setBrightness(0); 
-        isScreenDimmed = true;
-    }
-}
-
-// ===== CALLBACKS BTN1 (DW_BTN) =====
+// ===== CALLBACKS BTN1 =====
 static void onButtonSingleClickCb1(void *button_handle, void *usr_data) { slPress = true; }
 static void onButtonHoldCb1(void *button_handle, void *usr_data) { holdNext = true; }
-static void onButtonDoubleClickCb1(void *button_handle, void *usr_data) { toggleScreen(); }
+static void onButtonDoubleClickCb1(void *button_handle, void *usr_data) { nxtPress = true; }
 
-// ===== CALLBACKS BTN2 (UP_BTN) =====
+// ===== CALLBACKS BTN2 =====
 static void onButtonSingleClickCb2(void *button_handle, void *usr_data) { ecPress = true; }
 static void onButtonHoldCb2(void *button_handle, void *usr_data) { holdPrev = true; }
 static void onButtonDoubleClickCb2(void *button_handle, void *usr_data) { powerOffReq = true; }
@@ -120,11 +106,7 @@ void InputHandler(void) {
         if (nxtPress || prvPress || ecPress || slPress || holdNext || holdPrev) {
             powerOffCountdown = false;
             tft.fillRect(60, 12, 16 * LW, tft.fontHeight(1), bruceConfig.bgColor);
-            // Fix: Pecah assignment volatile
-            nxtPress = false; 
-            prvPress = false; 
-            ecPress = false; 
-            slPress = false;
+            nxtPress = prvPress = ecPress = slPress = false;
             return;
         }
         int elapsed = (millis() - powerOffStart) / 1000;
@@ -144,20 +126,7 @@ void InputHandler(void) {
     }
 
     // Main Input logic
-    if (nxtPress || prvPress || ecPress || slPress) {
-        if (isScreenDimmed) {
-            _setBrightness(bruceConfig.brightness);
-            isScreenDimmed = false;          
-            // Fix: Pecah assignment volatile
-            nxtPress = false; 
-            prvPress = false; 
-            ecPress = false; 
-            slPress = false; 
-            tm = millis();
-            return;
-        }
-        btn_pressed = true;
-    }
+    if (nxtPress || prvPress || ecPress || slPress) btn_pressed = true;
 
     if (millis() - tm > 200 || LongPress) {
         if (btn_pressed) {
@@ -165,11 +134,7 @@ void InputHandler(void) {
             tm = millis();
 
             if (wakeUpScreen()) {
-                // Fix: Pecah assignment volatile
-                nxtPress = false; 
-                prvPress = false; 
-                ecPress = false; 
-                slPress = false;
+                nxtPress = prvPress = ecPress = slPress = false;
                 return; 
             }
             
@@ -179,11 +144,7 @@ void InputHandler(void) {
             NextPress = nxtPress;
             PrevPress = prvPress;
 
-            // Fix: Pecah assignment volatile
-            nxtPress = false; 
-            prvPress = false; 
-            ecPress = false; 
-            slPress = false;
+            nxtPress = prvPress = ecPress = slPress = false;
         }
     }
 }
