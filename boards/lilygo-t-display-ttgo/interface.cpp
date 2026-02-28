@@ -12,18 +12,32 @@ volatile bool slPress = false;
 volatile bool holdNext = false;
 volatile bool holdPrev = false;
 
+// ===== SCREEN STATE =====
+volatile bool isScreenDimmed = false; 
+
 // ===== POWER OFF FLAGS =====
 volatile bool powerOffReq = false;
 bool powerOffCountdown = false;
 unsigned long powerOffStart = 0;
 int lastCount = -1;
 
-// ===== CALLBACKS BTN1 =====
+//dw btn dim
+void toggleScreen() {
+    if (isScreenDimmed) {
+        _setBrightness(bruceConfig.brightness); 
+        isScreenDimmed = false;
+    } else {
+        _setBrightness(0); 
+        isScreenDimmed = true;
+    }
+}
+
+// ===== CALLBACKS BTN1 (DW_BTN) =====
 static void onButtonSingleClickCb1(void *button_handle, void *usr_data) { slPress = true; }
 static void onButtonHoldCb1(void *button_handle, void *usr_data) { holdNext = true; }
-static void onButtonDoubleClickCb1(void *button_handle, void *usr_data) { nxtPress = true; }
+static void onButtonDoubleClickCb1(void *button_handle, void *usr_data) { toggleScreen(); }
 
-// ===== CALLBACKS BTN2 =====
+// ===== CALLBACKS BTN2 (UP_BTN) =====
 static void onButtonSingleClickCb2(void *button_handle, void *usr_data) { ecPress = true; }
 static void onButtonHoldCb2(void *button_handle, void *usr_data) { holdPrev = true; }
 static void onButtonDoubleClickCb2(void *button_handle, void *usr_data) { powerOffReq = true; }
@@ -126,7 +140,16 @@ void InputHandler(void) {
     }
 
     // Main Input logic
-    if (nxtPress || prvPress || ecPress || slPress) btn_pressed = true;
+    if (nxtPress || prvPress || ecPress || slPress) {
+        if (isScreenDimmed) {
+            _setBrightness(bruceConfig.brightness);
+            isScreenDimmed = false;          
+            nxtPress = prvPress = ecPress = slPress = false; 
+            tm = millis();
+            return;
+        }
+        btn_pressed = true;
+    }
 
     if (millis() - tm > 200 || LongPress) {
         if (btn_pressed) {
