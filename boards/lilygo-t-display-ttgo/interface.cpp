@@ -17,10 +17,6 @@ volatile bool slPress    = false;
 volatile bool holdNext   = false;
 volatile bool holdPrev   = false;
 
-// ==== SCREEN SLEEP FLAGS ====
-volatile bool screenSleepReq = false;
-bool          screenSleeping = false;
-
 
 
 // ======================================================
@@ -48,10 +44,9 @@ static void onButtonHoldCb1(void *button_handle, void *usr_data)
     holdNext = true;
 }
 
-// ==== DOUBLE CLICK DW = SCREEN SLEEP ====
 static void onButtonDoubleClickCb1(void *button_handle, void *usr_data)
 {
-    screenSleepReq = true;
+    nxtPress = true;
 }
 
 
@@ -164,52 +159,15 @@ void _setBrightness(uint8_t brightval)
 
 
 // ======================================================
-// ===================== SCREEN SLEEP ===================
-// ======================================================
-
-void screenSleep()
-{
-    screenSleeping = true;
-
-    analogWrite(TFT_BL, 0);   // backlight off
-    tft.writecommand(0x10);   // sleep in
-}
-
-bool wakeUpScreen()
-{
-    if (screenSleeping)
-    {
-        tft.writecommand(0x11);  // sleep out
-        delay(120);
-
-        _setBrightness(bruceConfig.bright);
-
-        screenSleeping = false;
-        return true;
-    }
-    return false;
-}
-
-
-
-// ======================================================
 // ===================== INPUT HANDLER ==================
 // ======================================================
 
 void InputHandler(void)
 {
-    static unsigned long tm          = 0;
+    static unsigned long tm        = 0;
     static bool          btn_pressed = false;
     static unsigned long holdTimer   = 0;
 
-
-    // ==== SCREEN SLEEP REQUEST ====
-    if (screenSleepReq)
-    {
-        screenSleepReq = false;
-        screenSleep();
-        return;
-    }
 
 
     // ================= AUTO SCROLL HOLD =================
@@ -295,7 +253,6 @@ void InputHandler(void)
             btn_pressed = false;
             tm          = millis();
 
-            // ==== WAKE IF SCREEN SLEEP ====
             if (wakeUpScreen())
             {
                 nxtPress = false;
