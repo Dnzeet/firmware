@@ -182,7 +182,7 @@ bool wakeUpScreen()
         tft.writecommand(0x11);  // sleep out
         delay(120);
 
-        _setBrightness(bruceConfig.brightness);
+        _setBrightness(bruceConfig.bright);
 
         screenSleeping = false;
         return true;
