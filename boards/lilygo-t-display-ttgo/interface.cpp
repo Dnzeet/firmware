@@ -20,17 +20,6 @@ volatile bool holdPrev   = false;
 
 
 // ======================================================
-// =================== POWER OFF FLAGS ==================
-// ======================================================
-
-volatile bool powerOffReq      = false;
-bool          powerOffCountdown = false;
-unsigned long powerOffStart     = 0;
-int           lastCount         = -1;
-
-
-
-// ======================================================
 // ===================== CALLBACK BTN1 ==================
 // ======================================================
 
@@ -67,7 +56,7 @@ static void onButtonHoldCb2(void *button_handle, void *usr_data)
 
 static void onButtonDoubleClickCb2(void *button_handle, void *usr_data)
 {
-    powerOffReq = true;
+    powerOff();
 }
 
 
@@ -164,7 +153,7 @@ void _setBrightness(uint8_t brightval)
 
 void InputHandler(void)
 {
-    static unsigned long tm        = 0;
+    static unsigned long tm          = 0;
     static bool          btn_pressed = false;
     static unsigned long holdTimer   = 0;
 
@@ -184,59 +173,6 @@ void InputHandler(void)
 
         if (digitalRead(DW_BTN) == HIGH) holdNext = false;
         if (digitalRead(UP_BTN) == HIGH) holdPrev = false;
-    }
-
-
-
-    // ================= POWER OFF REQUEST =================
-
-    if (powerOffReq)
-    {
-        powerOffReq       = false;
-        powerOffCountdown = true;
-        powerOffStart     = millis();
-        lastCount         = -1;
-    }
-
-
-
-    // ================= POWER OFF COUNTDOWN =================
-
-    if (powerOffCountdown)
-    {
-        if (nxtPress || prvPress || ecPress || slPress || holdNext || holdPrev)
-        {
-            powerOffCountdown = false;
-
-            tft.fillRect(60, 12, 16 * LW, tft.fontHeight(1), bruceConfig.bgColor);
-
-            nxtPress = false;
-            prvPress = false;
-            ecPress  = false;
-            slPress  = false;
-
-            return;
-        }
-
-        int elapsed   = (millis() - powerOffStart) / 1000;
-        int countDown = 3 - elapsed;
-
-        if (countDown != lastCount && countDown >= 0)
-        {
-            lastCount = countDown;
-
-            tft.setCursor(60, 12);
-            tft.setTextSize(1);
-            tft.setTextColor(bruceConfig.priColor, bruceConfig.bgColor);
-            tft.printf(" PWR OFF IN %d  ", countDown);
-        }
-
-        if (countDown < 0)
-        {
-            powerOffCountdown = false;
-            powerOff();
-            return;
-        }
     }
 
 
