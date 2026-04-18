@@ -35,7 +35,7 @@ static void onButtonHoldCb1(void *button_handle, void *usr_data)
 
 static void onButtonDoubleClickCb1(void *button_handle, void *usr_data)
 {
-    nxtPress = true;
+    return;
 }
 
 
