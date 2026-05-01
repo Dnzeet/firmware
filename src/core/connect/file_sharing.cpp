@@ -197,7 +197,7 @@ void FileSharing::espChat() {
             if (!msg.isFile && !msg.ping && !msg.pong) {
                 chatHistory.push_back("Peer: " + String(msg.data));
 
-                // auto balik ke chat terbaru
+                // back to new chat 
                 scrollOffset = 0;
 
                 redrawChat();
