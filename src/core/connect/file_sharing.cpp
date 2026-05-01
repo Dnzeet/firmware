@@ -140,21 +140,26 @@ void FileSharing::espChat() {
         tft.setTextFont(1);
         tft.setTextSize(2);
 
-        int y = 24;
+        // posisi aman di bawah header
+        int y = 34;
 
         for (int i = start; i < end; i++) {
             tft.setCursor(4, y);
             tft.print(chatHistory[i]);
-            y += 18;
+            y += 22;
         }
 
+        // footer kecil
         tft.setTextSize(1);
 
         tft.setCursor(4, 108);
         tft.print("[SEL] Type");
 
         tft.setCursor(4, 118);
-        tft.print("[PREV/NEXT] Scroll");
+        tft.print("[PREV/NEXT]");
+
+        tft.setCursor(90, 108);
+        tft.print("[ESC]");
     };
 
     redrawChat();
@@ -198,8 +203,6 @@ void FileSharing::espChat() {
             Message msg = popMessage();
 
             if (!msg.isFile && !msg.ping && !msg.pong) {
-                tft.writecommand(TFT_DISPON);
-
                 chatHistory.push_back("Peer: " + String(msg.data));
                 scrollOffset = 0;
                 redrawChat();
