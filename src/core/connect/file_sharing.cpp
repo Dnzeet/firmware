@@ -143,7 +143,7 @@ void FileSharing::espChat() {
     std::vector<String> chatHistory;
 
     auto redrawChat = [&]() {
-        drawMainBorderWithTitle("ESP CHAT");
+        drawMainBorderWithTitle("ESP-NOW CHAT");
         padprintln("");
 
         int start = max(0, (int)chatHistory.size() - 6);
