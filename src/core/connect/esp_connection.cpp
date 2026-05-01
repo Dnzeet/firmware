@@ -3,7 +3,6 @@
 #include "core/display.h"
 #include <WiFi.h>
 
-// Initialize the static instance pointer
 EspConnection *EspConnection::instance = nullptr;
 std::vector<Option> peerOptions;
 
@@ -12,7 +11,6 @@ EspConnection::EspConnection() { setInstance(this); }
 EspConnection::~EspConnection() {
     esp_now_unregister_send_cb();
     esp_now_unregister_recv_cb();
-
     esp_now_deinit();
 }
 
@@ -22,9 +20,7 @@ bool EspConnection::beginSend() {
     if (!beginEspnow()) return false;
 
     sendPing();
-
     loopOptions(peerOptions);
-
     peerOptions.clear();
 
     if (!setupPeer(dstAddress)) {
@@ -70,6 +66,36 @@ EspConnection::Message EspConnection::createMessage(String text) {
     return message;
 }
 
+/* ===========================
+   ESP CHAT SUPPORT
+=========================== */
+
+bool EspConnection::sendTextMessage(String text) {
+    Message msg = createMessage(text);
+
+    esp_err_t response = esp_now_send(
+        dstAddress,
+        (uint8_t *)&msg,
+        sizeof(msg)
+    );
+
+    return response == ESP_OK;
+}
+
+bool EspConnection::hasMessage() {
+    return !recvQueue.empty();
+}
+
+EspConnection::Message EspConnection::popMessage() {
+    Message msg = recvQueue.front();
+    recvQueue.erase(recvQueue.begin());
+    return msg;
+}
+
+/* ===========================
+   END CHAT SUPPORT
+=========================== */
+
 EspConnection::Message EspConnection::createFileMessage(File file) {
     Message message;
     String path = String(file.path());
@@ -86,14 +112,12 @@ EspConnection::Message EspConnection::createFileMessage(File file) {
 EspConnection::Message EspConnection::createPingMessage() {
     Message message;
     message.ping = true;
-
     return message;
 }
 
 EspConnection::Message EspConnection::createPongMessage() {
     Message message;
     message.pong = true;
-
     return message;
 }
 
@@ -104,8 +128,15 @@ void EspConnection::sendPing() {
 
     Message message = createPingMessage();
 
-    esp_err_t response = esp_now_send(broadcastAddress, (uint8_t *)&message, sizeof(message));
-    if (response != ESP_OK) { Serial.printf("Send ping response: %s\n", esp_err_to_name(response)); }
+    esp_err_t response = esp_now_send(
+        broadcastAddress,
+        (uint8_t *)&message,
+        sizeof(message)
+    );
+
+    if (response != ESP_OK) {
+        Serial.printf("Send ping response: %s\n", esp_err_to_name(response));
+    }
 
     delay(500);
 }
@@ -116,7 +147,10 @@ void EspConnection::sendPong(const uint8_t *mac) {
     if (!setupPeer(mac)) return;
 
     esp_err_t response = esp_now_send(mac, (uint8_t *)&message, sizeof(message));
-    if (response != ESP_OK) { Serial.printf("Send pong response: %s\n", esp_err_to_name(response)); }
+
+    if (response != ESP_OK) {
+        Serial.printf("Send pong response: %s\n", esp_err_to_name(response));
+    }
 }
 
 bool EspConnection::setupPeer(const uint8_t *mac) {
@@ -135,11 +169,13 @@ void EspConnection::printMessage(Message message) {
     delay(100);
 
     Serial.println("Message Details:");
+
     if (message.ping) {
         Serial.println("Ping: " + String(message.ping));
         Serial.println("");
         return;
     }
+
     if (message.pong) {
         Serial.println("Pong: " + String(message.pong));
         Serial.println("");
@@ -150,16 +186,16 @@ void EspConnection::printMessage(Message message) {
         Serial.println("Filename: " + String(message.filename));
         Serial.println("Filepath: " + String(message.filepath));
     }
+
     Serial.println("Data Size: " + String(message.dataSize));
     Serial.println("Total Bytes: " + String(message.totalBytes));
     Serial.println("Bytes Sent: " + String(message.bytesSent));
     Serial.println("Done: " + String(message.done));
     Serial.print("Data: ");
 
-    // Append data to the result if dataSize is greater than 0
     if (message.dataSize > 0) {
         for (size_t i = 0; i < message.dataSize; ++i) {
-            Serial.print((char)message.data[i]); // Assuming data contains valid characters
+            Serial.print((char)message.data[i]);
         }
     } else {
         Serial.println("No data");
@@ -170,12 +206,16 @@ void EspConnection::printMessage(Message message) {
 
 String EspConnection::macToString(const uint8_t *mac) {
     char macStr[18];
-    sprintf(macStr, "%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    sprintf(macStr, "%02X%02X%02X%02X%02X%02X",
+            mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
     return macStr;
 }
 
 void EspConnection::appendPeerToList(const uint8_t *mac) {
-    peerOptions.push_back({macToString(mac).c_str(), [this, mac]() { setDstAddress(mac); }});
+    peerOptions.push_back({
+        macToString(mac).c_str(),
+        [this, mac]() { setDstAddress(mac); }
+    });
 }
 
 void EspConnection::onDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
@@ -191,9 +231,10 @@ void EspConnection::onDataSent(const uint8_t *mac_addr, esp_now_send_status_t st
 void EspConnection::onDataRecv(const uint8_t *mac, const uint8_t *incomingData, int len) {
     Message recvMessage;
 
-    // Use reinterpret_cast and copy assignment
-    const Message *incomingMessage = reinterpret_cast<const Message *>(incomingData);
-    recvMessage = *incomingMessage; // Use copy assignment
+    const Message *incomingMessage =
+        reinterpret_cast<const Message *>(incomingData);
+
+    recvMessage = *incomingMessage;
 
     printMessage(recvMessage);
 
@@ -210,4 +251,5 @@ void EspConnection::onDataSentStatic(const wifi_tx_info_t *info, esp_now_send_st
 void EspConnection::onDataRecvStatic(const esp_now_recv_info_t *info, const uint8_t *incomingData, int len) {
     if (instance) instance->onDataRecv(info->src_addr, incomingData, len);
 }
+
 #endif
