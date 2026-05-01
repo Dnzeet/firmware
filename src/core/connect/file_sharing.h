@@ -1,6 +1,8 @@
 #ifndef __ESP_FILE_SHARING_H__
 #define __ESP_FILE_SHARING_H__
+
 #if !defined(LITE_VERSION)
+
 #include "esp_connection.h"
 
 class FileSharing : public EspConnection {
@@ -15,6 +17,7 @@ public:
     /////////////////////////////////////////////////////////////////////////////////////
     void sendFile();
     void receiveFile();
+    void espChat();
 
 private:
     String recvFileName;
