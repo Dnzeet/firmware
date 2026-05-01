@@ -147,20 +147,25 @@ void FileSharing::espChat() {
 
         drawMainBorderWithTitle("ESP CHAT");
         padprintln("");
-        padprintln("Type message");
+        padprintln("SEL/NEXT = Compose");
+        padprintln("ESC = Exit");
+        padprintln("");
+        padprintln("Waiting messages...");
 
-        String text = keyboard("Chat:");
+        if (check(SelPress) || check(NextPress)) {
+            String text = keyboard("", 150, "ESP Chat:");
 
-        if (text.length() > 0) {
-            if (sendTextMessage(text)) {
-                drawMainBorderWithTitle("ESP CHAT");
-                padprintln("");
-                padprintln("Sent:");
-                padprintln(text);
-                delay(1000);
-            } else {
-                displayError("Send failed");
-                delay(1000);
+            if (text.length() > 0) {
+                if (sendTextMessage(text)) {
+                    drawMainBorderWithTitle("ESP CHAT");
+                    padprintln("");
+                    padprintln("Sent:");
+                    padprintln(text);
+                    delay(1000);
+                } else {
+                    displayError("Send failed");
+                    delay(1000);
+                }
             }
         }
 
@@ -171,7 +176,11 @@ void FileSharing::espChat() {
                 drawMainBorderWithTitle("NEW MESSAGE");
                 padprintln("");
                 padprintln(String(msg.data));
-                delay(2000);
+                padprintln("");
+                padprintln("Press any key");
+
+                while (!check(AnyKeyPress))
+                    delay(50);
             }
         }
 
