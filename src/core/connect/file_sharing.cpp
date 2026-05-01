@@ -1,4 +1,5 @@
 #if !defined(LITE_VERSION)
+#include "core/mykeyboard.h"
 #include "file_sharing.h"
 #include "core/display.h"
 #include <SD.h>
