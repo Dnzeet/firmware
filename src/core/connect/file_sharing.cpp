@@ -137,18 +137,6 @@ void FileSharing::espChat() {
         int start = max(0, total - visibleLines - scrollOffset);
         int end = min(total, start + visibleLines);
 
-        tft.setTextFont(1);
-        tft.setTextSize(1);
-
-        // posisi aman di bawah header
-        int y = 34;
-
-        for (int i = start; i < end; i++) {
-            tft.setCursor(4, y);
-            tft.print(chatHistory[i]);
-            y += 22;
-        }
-
         // footer kecil
         tft.setTextSize(1);
 
