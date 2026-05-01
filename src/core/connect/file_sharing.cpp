@@ -2,6 +2,7 @@
 #include "file_sharing.h"
 #include "core/display.h"
 #include <SD.h>
+
 FileSharing::FileSharing() {}
 
 void FileSharing::sendFile() {
@@ -44,6 +45,7 @@ void FileSharing::sendFile() {
         message.done = message.bytesSent == message.totalBytes;
 
         response = esp_now_send(dstAddress, (uint8_t *)&message, sizeof(message));
+
         if (response != ESP_OK) {
             Serial.printf("Send file response: %s\n", esp_err_to_name(response));
             sendStatus = FAILED;
@@ -53,7 +55,8 @@ void FileSharing::sendFile() {
         delay(100);
     }
 
-    if (message.bytesSent == message.totalBytes) displaySuccess("File sent");
+    if (message.bytesSent == message.totalBytes)
+        displaySuccess("File sent");
 
     file.close();
     delay(1000);
@@ -79,6 +82,7 @@ void FileSharing::receiveFile() {
             displayError("Error receiving file");
             break;
         }
+
         if (recvStatus == SUCCESS) {
             displaySuccess("File received");
             break;
@@ -88,15 +92,23 @@ void FileSharing::receiveFile() {
             Message recvFileMessage = recvQueue.front();
             recvQueue.erase(recvQueue.begin());
 
-            progressHandler(recvFileMessage.bytesSent, recvFileMessage.totalBytes, "Receiving...");
+            progressHandler(
+                recvFileMessage.bytesSent,
+                recvFileMessage.totalBytes,
+                "Receiving..."
+            );
 
             if (!appendToFile(recvFileMessage)) {
                 recvStatus = FAILED;
                 Serial.println("Failed appending to file");
             }
+
             if (recvFileMessage.done) {
                 Serial.println("Recv done");
-                recvStatus = recvFileMessage.bytesSent == recvFileMessage.totalBytes ? SUCCESS : FAILED;
+                recvStatus =
+                    recvFileMessage.bytesSent == recvFileMessage.totalBytes
+                        ? SUCCESS
+                        : FAILED;
             }
         }
 
@@ -108,26 +120,83 @@ void FileSharing::receiveFile() {
     if (recvStatus == SUCCESS) {
         drawMainBorderWithTitle("RECEIVE FILE");
         padprintln("");
-        padprintln("File received: ");
+        padprintln("File received:");
         padprintln(recvFileName);
         padprintln("\n");
         padprintln("Press any key to leave");
-        while (!check(AnyKeyPress)) vTaskDelay(50 / portTICK_PERIOD_MS);
-        ;
+
+        while (!check(AnyKeyPress))
+            vTaskDelay(50 / portTICK_PERIOD_MS);
     }
 }
+
+/* ===========================
+   ESP CHAT
+=========================== */
+
+void FileSharing::espChat() {
+    drawMainBorderWithTitle("ESP CHAT");
+
+    recvQueue = {};
+
+    if (!beginSend()) return;
+
+    while (1) {
+        if (check(EscPress)) break;
+
+        drawMainBorderWithTitle("ESP CHAT");
+        padprintln("");
+        padprintln("Type message");
+
+        String text = keyboard("Chat:");
+
+        if (text.length() > 0) {
+            if (sendTextMessage(text)) {
+                drawMainBorderWithTitle("ESP CHAT");
+                padprintln("");
+                padprintln("Sent:");
+                padprintln(text);
+                delay(1000);
+            } else {
+                displayError("Send failed");
+                delay(1000);
+            }
+        }
+
+        while (hasMessage()) {
+            Message msg = popMessage();
+
+            if (!msg.isFile && !msg.ping && !msg.pong) {
+                drawMainBorderWithTitle("NEW MESSAGE");
+                padprintln("");
+                padprintln(String(msg.data));
+                delay(2000);
+            }
+        }
+
+        delay(100);
+    }
+}
+
+/* ===========================
+   END CHAT
+=========================== */
 
 File FileSharing::selectFile() {
     String filename;
     FS *fs = &LittleFS;
+
     setupSdCard();
+
     if (sdcardMounted) {
         options = {
-            {"SD Card",  [&]() { fs = &SD; }      },
+            {"SD Card", [&]() { fs = &SD; }},
             {"LittleFS", [&]() { fs = &LittleFS; }},
         };
+
         loopOptions(options);
     }
+
     filename = loopSD(*fs, true);
 
     File file = fs->open(filename, FILE_READ);
@@ -136,11 +205,14 @@ File FileSharing::selectFile() {
 
 bool FileSharing::appendToFile(FileSharing::Message fileMessage) {
     FS *fs;
+
     if (!getFsStorage(fs)) return false;
 
-    if (recvFileName == "") createFilename(fs, fileMessage);
+    if (recvFileName == "")
+        createFilename(fs, fileMessage);
 
     File file = (*fs).open(recvFileName, FILE_APPEND);
+
     if (!file) return false;
 
     file.write((const uint8_t *)fileMessage.data, fileMessage.dataSize);
@@ -153,8 +225,11 @@ void FileSharing::createFilename(FS *fs, FileSharing::Message fileMessage) {
     String messageFilename = String(fileMessage.filename);
     String messageFilepath = String(fileMessage.filepath);
 
-    String filename = messageFilename.substring(0, messageFilename.lastIndexOf("."));
-    String ext = messageFilename.substring(messageFilename.lastIndexOf("."));
+    String filename =
+        messageFilename.substring(0, messageFilename.lastIndexOf("."));
+
+    String ext =
+        messageFilename.substring(messageFilename.lastIndexOf("."));
 
     Serial.println("Creating filename");
     Serial.print("Path: ");
@@ -164,11 +239,16 @@ void FileSharing::createFilename(FS *fs, FileSharing::Message fileMessage) {
     Serial.print("Ext: ");
     Serial.println(ext);
 
-    if (!(*fs).exists(messageFilepath)) (*fs).mkdir(messageFilepath);
+    if (!(*fs).exists(messageFilepath))
+        (*fs).mkdir(messageFilepath);
+
     if ((*fs).exists(messageFilepath + "/" + filename + ext)) {
         int i = 1;
         filename += "_";
-        while ((*fs).exists(messageFilepath + "/" + filename + String(i) + ext)) i++;
+
+        while ((*fs).exists(messageFilepath + "/" + filename + String(i) + ext))
+            i++;
+
         filename += String(i);
     }
 
