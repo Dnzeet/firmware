@@ -101,9 +101,11 @@ void FileSharing::receiveFile() {
 
             if (!appendToFile(recvFileMessage)) {
                 recvStatus = FAILED;
+                Serial.println("Failed appending to file");
             }
 
             if (recvFileMessage.done) {
+                Serial.println("Recv done");
                 recvStatus =
                     recvFileMessage.bytesSent == recvFileMessage.totalBytes
                         ? SUCCESS
@@ -128,26 +130,25 @@ void FileSharing::espChat() {
 
     std::vector<String> chatHistory;
     int scrollOffset = 0;
-    const int visibleLines = 4;
+    const int visibleLines = 6;
 
     auto redrawChat = [&]() {
+        tft.setTextSize(1);
         drawMainBorderWithTitle("ESP-NOW CHAT");
+        padprintln("");
 
         int total = chatHistory.size();
         int start = max(0, total - visibleLines - scrollOffset);
         int end = min(total, start + visibleLines);
 
-        // footer kecil
-        tft.setTextSize(1);
+        for (int i = start; i < end; i++) {
+            padprintln(chatHistory[i]);
+        }
 
-        tft.setCursor(4, 108);
-        tft.print("[SEL] Type");
-
-        tft.setCursor(4, 118);
-        tft.print("[PREV/NEXT]");
-
-        tft.setCursor(90, 108);
-        tft.print("[ESC]");
+        padprintln("");
+        padprintln("[OK] Type");
+        padprintln("[PREV/NEXT] Scroll");
+        padprintln("[ESC] Exit");
     };
 
     redrawChat();
@@ -155,9 +156,10 @@ void FileSharing::espChat() {
     while (1) {
         if (check(EscPress)) break;
 
+        // keyboard
         if (check(SelPress)) {
             tft.fillScreen(bruceConfig.bgColor);
-            delay(25);
+            delay(75);
 
             String text = keyboard("", ESP_DATA_SIZE, "ESP Chat");
 
@@ -173,6 +175,7 @@ void FileSharing::espChat() {
             redrawChat();
         }
 
+        // scroll up
         if (check(PrevPress)) {
             if (scrollOffset < max(0, (int)chatHistory.size() - visibleLines)) {
                 scrollOffset++;
@@ -180,6 +183,7 @@ void FileSharing::espChat() {
             }
         }
 
+        // scroll down
         if (check(NextPress)) {
             if (scrollOffset > 0) {
                 scrollOffset--;
@@ -192,12 +196,15 @@ void FileSharing::espChat() {
 
             if (!msg.isFile && !msg.ping && !msg.pong) {
                 chatHistory.push_back("Peer: " + String(msg.data));
+
+                // auto balik ke chat terbaru
                 scrollOffset = 0;
+
                 redrawChat();
             }
         }
 
-        delay(50);
+        delay(100);
     }
 }
 
@@ -253,6 +260,14 @@ void FileSharing::createFilename(FS *fs, FileSharing::Message fileMessage) {
 
     String ext =
         messageFilename.substring(messageFilename.lastIndexOf("."));
+
+    Serial.println("Creating filename");
+    Serial.print("Path: ");
+    Serial.println(messageFilepath);
+    Serial.print("Name: ");
+    Serial.println(filename);
+    Serial.print("Ext: ");
+    Serial.println(ext);
 
     if (!(*fs).exists(messageFilepath))
         (*fs).mkdir(messageFilepath);
