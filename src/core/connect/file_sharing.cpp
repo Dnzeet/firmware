@@ -138,7 +138,7 @@ void FileSharing::espChat() {
         int end = min(total, start + visibleLines);
 
         tft.setTextFont(1);
-        tft.setTextSize(2);
+        tft.setTextSize(1);
 
         // posisi aman di bawah header
         int y = 34;
