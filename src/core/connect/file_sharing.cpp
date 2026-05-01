@@ -136,51 +136,55 @@ void FileSharing::receiveFile() {
 =========================== */
 
 void FileSharing::espChat() {
-    drawMainBorderWithTitle("ESP CHAT");
-
     recvQueue = {};
 
     if (!beginSend()) return;
 
+    std::vector<String> chatHistory;
+
+    auto redrawChat = [&]() {
+        drawMainBorderWithTitle("ESP CHAT");
+        padprintln("");
+
+        int start = max(0, (int)chatHistory.size() - 6);
+
+        for (int i = start; i < chatHistory.size(); i++) {
+            padprintln(chatHistory[i]);
+        }
+
+        padprintln("");
+        padprintln("[OK] Type");
+        padprintln("[ESC] Exit");
+    };
+
+    redrawChat();
+
     while (1) {
         if (check(EscPress)) break;
 
-        drawMainBorderWithTitle("ESP CHAT");
-        padprintln("");
-        padprintln("SEL/NEXT = Compose");
-        padprintln("ESC = Exit");
-        padprintln("");
-        padprintln("Waiting messages...");
-
         if (check(SelPress) || check(NextPress)) {
-            String text = keyboard("", 150, "ESP Chat:");
+            tft.fillScreen(bruceConfig.bgColor);
+            delay(500);
+
+            String text = keyboard("", ESP_DATA_SIZE, "ESP Chat");
 
             if (text.length() > 0) {
                 if (sendTextMessage(text)) {
-                    drawMainBorderWithTitle("ESP CHAT");
-                    padprintln("");
-                    padprintln("Sent:");
-                    padprintln(text);
-                    delay(1000);
+                    chatHistory.push_back("Me: " + text);
                 } else {
-                    displayError("Send failed");
-                    delay(1000);
+                    chatHistory.push_back("Send failed");
                 }
             }
+
+            redrawChat();
         }
 
         while (hasMessage()) {
             Message msg = popMessage();
 
             if (!msg.isFile && !msg.ping && !msg.pong) {
-                drawMainBorderWithTitle("NEW MESSAGE");
-                padprintln("");
-                padprintln(String(msg.data));
-                padprintln("");
-                padprintln("Press any key");
-
-                while (!check(AnyKeyPress))
-                    delay(50);
+                chatHistory.push_back("Peer: " + String(msg.data));
+                redrawChat();
             }
         }
 
