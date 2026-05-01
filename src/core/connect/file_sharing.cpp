@@ -101,7 +101,6 @@ void FileSharing::receiveFile() {
 
             if (!appendToFile(recvFileMessage)) {
                 recvStatus = FAILED;
-                Serial.println("Failed appending to file");
             }
 
             if (recvFileMessage.done) {
@@ -116,18 +115,6 @@ void FileSharing::receiveFile() {
     }
 
     delay(1000);
-
-    if (recvStatus == SUCCESS) {
-        drawMainBorderWithTitle("RECEIVE FILE");
-        padprintln("");
-        padprintln("File received:");
-        padprintln(recvFileName);
-        padprintln("\n");
-        padprintln("Press any key to leave");
-
-        while (!check(AnyKeyPress))
-            vTaskDelay(50 / portTICK_PERIOD_MS);
-    }
 }
 
 /* ===========================
@@ -141,26 +128,33 @@ void FileSharing::espChat() {
 
     std::vector<String> chatHistory;
     int scrollOffset = 0;
-    const int visibleLines = 6;
+    const int visibleLines = 4;
 
     auto redrawChat = [&]() {
         drawMainBorderWithTitle("ESP-NOW CHAT");
-        padprintln("");
-
-        tft.setTextSize(1);
 
         int total = chatHistory.size();
         int start = max(0, total - visibleLines - scrollOffset);
         int end = min(total, start + visibleLines);
 
+        tft.setTextFont(1);
+        tft.setTextSize(2);
+
+        int y = 24;
+
         for (int i = start; i < end; i++) {
-            padprintln(chatHistory[i]);
+            tft.setCursor(4, y);
+            tft.print(chatHistory[i]);
+            y += 18;
         }
 
-        padprintln("");
-        padprintln("[SEL] Type");
-        padprintln("[PREV/NEXT] Scroll");
-        padprintln("[ESC] Exit");
+        tft.setTextSize(1);
+
+        tft.setCursor(4, 108);
+        tft.print("[SEL] Type");
+
+        tft.setCursor(4, 118);
+        tft.print("[PREV/NEXT] Scroll");
     };
 
     redrawChat();
@@ -168,10 +162,9 @@ void FileSharing::espChat() {
     while (1) {
         if (check(EscPress)) break;
 
-        // Open keyboard
         if (check(SelPress)) {
             tft.fillScreen(bruceConfig.bgColor);
-            delay(50);
+            delay(25);
 
             String text = keyboard("", ESP_DATA_SIZE, "ESP Chat");
 
@@ -187,7 +180,6 @@ void FileSharing::espChat() {
             redrawChat();
         }
 
-        // Scroll up
         if (check(PrevPress)) {
             if (scrollOffset < max(0, (int)chatHistory.size() - visibleLines)) {
                 scrollOffset++;
@@ -195,7 +187,6 @@ void FileSharing::espChat() {
             }
         }
 
-        // Scroll down
         if (check(NextPress)) {
             if (scrollOffset > 0) {
                 scrollOffset--;
@@ -203,11 +194,12 @@ void FileSharing::espChat() {
             }
         }
 
-        // Receive messages
         while (hasMessage()) {
             Message msg = popMessage();
 
             if (!msg.isFile && !msg.ping && !msg.pong) {
+                tft.writecommand(TFT_DISPON);
+
                 chatHistory.push_back("Peer: " + String(msg.data));
                 scrollOffset = 0;
                 redrawChat();
