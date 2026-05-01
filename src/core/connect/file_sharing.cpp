@@ -132,7 +132,7 @@ void FileSharing::receiveFile() {
 }
 
 /* ===========================
-   ESP CHAT
+   ESP-NOW CHAT
 =========================== */
 
 void FileSharing::espChat() {
@@ -165,7 +165,7 @@ void FileSharing::espChat() {
 
         if (check(SelPress) || check(NextPress)) {
             tft.fillScreen(bruceConfig.bgColor);
-            delay(500);
+            delay(75);
 
             String text = keyboard("", ESP_DATA_SIZE, "ESP Chat");
 
