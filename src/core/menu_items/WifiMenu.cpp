@@ -15,7 +15,7 @@
 #include "modules/wifi/scan_hosts.h"
 #include "modules/wifi/sniffer.h"
 #include "modules/wifi/wifi_atks.h"
-
+#include "modules/wifi/netcut.h" 
 
 
 #ifndef LITE_VERSION
