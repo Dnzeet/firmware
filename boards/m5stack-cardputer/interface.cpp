@@ -136,14 +136,14 @@ void _post_setup_gpio() {
     bruceConfigPins.CC1101_bus.sck = (gpio_num_t)40;
     bruceConfigPins.CC1101_bus.miso = (gpio_num_t)39;
     bruceConfigPins.CC1101_bus.mosi = (gpio_num_t)14;
-    bruceConfigPins.CC1101_bus.cs = (gpio_num_t)13;
-    bruceConfigPins.CC1101_bus.io0 = (gpio_num_t)5;
+    bruceConfigPins.CC1101_bus.cs = (gpio_num_t)3;
+    bruceConfigPins.CC1101_bus.io0 = (gpio_num_t)4;
 
     bruceConfigPins.NRF24_bus.sck = (gpio_num_t)40;
     bruceConfigPins.NRF24_bus.miso = (gpio_num_t)39;
     bruceConfigPins.NRF24_bus.mosi = (gpio_num_t)14;
-    bruceConfigPins.NRF24_bus.cs = (gpio_num_t)6;
-    bruceConfigPins.NRF24_bus.io0 = (gpio_num_t)4;
+    bruceConfigPins.NRF24_bus.cs = (gpio_num_t)5;
+    bruceConfigPins.NRF24_bus.io0 = (gpio_num_t)6;
 
     pinMode(bruceConfigPins.NRF24_bus.cs, OUTPUT);
     pinMode(bruceConfigPins.CC1101_bus.cs, OUTPUT);
