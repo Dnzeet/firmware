@@ -27,6 +27,15 @@ static uint8_t peakTimer[NRF_SPECTRUM_CHANNELS];
 
 #define PEAK_HOLD_SWEEPS 25 // Number of sweeps before peak decays
 
+// Fixed black background — spectrum data needs strong contrast against the
+// bar gradient/marker colors, so it deliberately does NOT follow the user's
+// theme background (a bright theme would wash out the signal bars)
+#define SPEC_BG_COLOR TFT_BLACK
+
+// Fixed light-grey for static labels (mode name, freq scale) — kept off-white
+// on purpose so it doesn't compete visually with the white peak-hold marker
+#define SPEC_LABEL_COLOR TFT_SILVER
+
 // Dim reference color for gridlines/ticks — subtler than TFT_DARKGREY so it
 // stays in the background instead of competing visually with the bars
 #define SPEC_GRID_COLOR 0x2965
@@ -176,7 +185,7 @@ String scanChannels(bool web) {
 
         // Main bar area: clear with background first
         if (barH < spec_barAreaH) {
-            tft.fillRect(x, spec_barAreaY, w, spec_barAreaH - barH, bruceConfig.bgColor);
+            tft.fillRect(x, spec_barAreaY, w, spec_barAreaH - barH, SPEC_BG_COLOR);
         }
 
         // Subtle 1px reference gridline every 10 channels (kept thin so it doesn't
@@ -224,14 +233,14 @@ String scanChannels(bool web) {
         if (maxLevel > 10) {
             int peakFreq = 2400 + (int)maxCh;
             snprintf(statBuf, sizeof(statBuf), "PK:%dMHz %d%%", peakFreq, (int)maxLevel);
-            tft.fillRect(tftWidth - 110, stY, 110, 9, bruceConfig.bgColor);
-            tft.setTextColor(TFT_YELLOW, bruceConfig.bgColor);
+            tft.fillRect(tftWidth - 110, stY, 110, 9, SPEC_BG_COLOR);
+            tft.setTextColor(TFT_YELLOW, SPEC_BG_COLOR);
             tft.drawRightString(statBuf, tftWidth - spec_marginL - 2, stY, 1);
         }
         // Left (top corner): active + sweep count
         snprintf(statBuf, sizeof(statBuf), "ACT:%d SW:%lu", activeCh, sweepCount);
-        tft.fillRect(spec_marginL, stY, 90, 9, bruceConfig.bgColor);
-        tft.setTextColor(TFT_CYAN, bruceConfig.bgColor);
+        tft.fillRect(spec_marginL, stY, 90, 9, SPEC_BG_COLOR);
+        tft.setTextColor(TFT_CYAN, SPEC_BG_COLOR);
         tft.drawString(statBuf, spec_marginL, stY, 1);
     }
 
@@ -251,7 +260,7 @@ String scanChannels(bool web) {
                     int labelX = x + w / 2; // Center on channel
 
                     tft.setTextSize(FP);
-                    tft.setTextColor(deviceInfo[dev].labelColor, bruceConfig.bgColor);
+                    tft.setTextColor(deviceInfo[dev].labelColor, SPEC_BG_COLOR);
                     tft.drawCentreString(deviceInfo[dev].label, labelX, labelY, 1);
 
                     labelY += 8;                       // Stack labels vertically
@@ -263,7 +272,7 @@ String scanChannels(bool web) {
                     int labelX = x + w / 2;
 
                     tft.setTextSize(1); // Tiny font
-                    tft.setTextColor(TFT_DARKGREY, bruceConfig.bgColor);
+                    tft.setTextColor(TFT_DARKGREY, SPEC_BG_COLOR);
                     tft.drawCentreString("?", labelX, labelY, 1);
 
                     labelY += 6;
@@ -280,7 +289,7 @@ String scanChannels(bool web) {
         for (int i = 0; i < NRF_SPECTRUM_CHANNELS; i++) {
             int x, w;
             getBarGeom(i, x, w);
-            uint16_t color = (channel[i] > 3) ? getSpectrumColor(channel[i]) : bruceConfig.bgColor;
+            uint16_t color = (channel[i] > 3) ? getSpectrumColor(channel[i]) : SPEC_BG_COLOR;
             tft.fillRect(x, spec_barAreaY + waterfallY, w, rowH, color);
         }
         // Draw cursor line at next position
@@ -297,7 +306,7 @@ String scanChannels(bool web) {
 }
 
 void nrf_spectrum() {
-    tft.fillScreen(bruceConfig.bgColor);
+    tft.fillScreen(SPEC_BG_COLOR);
 
     // Initialize data
     memset(channel, 0, sizeof(channel));
@@ -313,7 +322,7 @@ void nrf_spectrum() {
 
     // Draw frequency labels at bottom with WiFi channel markers
     tft.setTextSize(FP);
-    tft.setTextColor(bruceConfig.priColor, bruceConfig.bgColor);
+    tft.setTextColor(SPEC_LABEL_COLOR, SPEC_BG_COLOR);
     int labelY = tftHeight - spec_footerH + 2;   // Row 1: frequency labels
     int wifiY = tftHeight - spec_footerH + 11;   // Row 2: WiFi ch markers (8px gap)
     tft.drawString("2.400", spec_marginL, labelY, 1);
@@ -321,7 +330,7 @@ void nrf_spectrum() {
     tft.drawRightString("2.525", tftWidth - spec_marginL, labelY, 1);
 
     // WiFi channel markers (ch1=nrf12, ch6=nrf37, ch11=nrf62)
-    tft.setTextColor(TFT_CYAN, bruceConfig.bgColor);
+    tft.setTextColor(TFT_CYAN, SPEC_BG_COLOR);
     int wifiChs[] = {12, 37, 62};
     const char *wifiLabels[] = {"W1", "W6", "W11"};
     for (int w = 0; w < 3; w++) {
@@ -337,7 +346,7 @@ void nrf_spectrum() {
 
     // Draw mode indicator
     tft.setTextSize(FP);
-    tft.setTextColor(bruceConfig.priColor, bruceConfig.bgColor);
+    tft.setTextColor(SPEC_LABEL_COLOR, SPEC_BG_COLOR);
     const char *modeStr[] = {"Mode:Bar+Peak", "Mode:Bar", "Mode:Device", "Mode:Waterfall"};
     tft.drawString(modeStr[specDisplayMode], spec_marginL, 11, 1);
 
@@ -369,13 +378,13 @@ void nrf_spectrum() {
                 specDisplayMode = (specDisplayMode + 1) % 4;
                 waterfallY = 0;
                 // Clear only spectrum bar area, preserve frequency labels at bottom
-                tft.fillRect(0, spec_barAreaY, tftWidth, spec_barAreaH, bruceConfig.bgColor);
+                tft.fillRect(0, spec_barAreaY, tftWidth, spec_barAreaH, SPEC_BG_COLOR);
                 // Redraw mode label (cleared first so a shorter name doesn't leave
                 // leftover characters from a longer previous name)
                 const char *modeStr[] = {"Mode:Bar+Peak", "Mode:Bar", "Mode:Device", "Mode:Waterfall"};
-                tft.fillRect(spec_marginL, 11, tftWidth / 2, 9, bruceConfig.bgColor);
+                tft.fillRect(spec_marginL, 11, tftWidth / 2, 9, SPEC_BG_COLOR);
                 tft.setTextSize(FP);
-                tft.setTextColor(bruceConfig.priColor, bruceConfig.bgColor);
+                tft.setTextColor(SPEC_LABEL_COLOR, SPEC_BG_COLOR);
                 tft.drawString(modeStr[specDisplayMode], spec_marginL, 11, 1);
                 delay(200);
             }
