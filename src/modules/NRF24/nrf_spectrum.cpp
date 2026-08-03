@@ -27,6 +27,10 @@ static uint8_t peakTimer[NRF_SPECTRUM_CHANNELS];
 
 #define PEAK_HOLD_SWEEPS 25 // Number of sweeps before peak decays
 
+// Dim reference color for gridlines/ticks — subtler than TFT_DARKGREY so it
+// stays in the background instead of competing visually with the bars
+#define SPEC_GRID_COLOR 0x2965
+
 // ── Device label tracking ────────────────────────────────────────
 #define LABEL_DECAY_SWEEPS 10                           // Sweeps until label fades after signal gone
 static uint8_t deviceLabelTimer[NRF_SPECTRUM_CHANNELS]; // Decay timer per channel
@@ -91,7 +95,7 @@ static int spec_drawW;    // Available drawing width (after margins)
 
 static void calcLayout() {
     spec_headerH = 0;
-    spec_footerH = 14;
+    spec_footerH = 20; // Enough for 2 text rows (freq labels + WiFi ch markers)
     spec_mirrorH = 0; // Mirror removed — eliminates top artifacts
     spec_barAreaY = 0;
     spec_barAreaH = tftHeight - spec_footerH - 2;
@@ -170,11 +174,18 @@ String scanChannels(bool web) {
         int barH = (level * spec_barAreaH) / 100;
         int peakH = (peakHold[i] * spec_barAreaH) / 100;
 
-        // Grid line color (every 10 channels)
-        uint16_t gridColor = (i % 10 == 0) ? TFT_DARKGREY : bruceConfig.bgColor;
+        // Main bar area: clear with background first
+        if (barH < spec_barAreaH) {
+            tft.fillRect(x, spec_barAreaY, w, spec_barAreaH - barH, bruceConfig.bgColor);
+        }
 
-        // Main bar area: clear above, draw bar from bottom
-        if (barH < spec_barAreaH) { tft.fillRect(x, spec_barAreaY, w, spec_barAreaH - barH, gridColor); }
+        // Subtle 1px reference gridline every 10 channels (kept thin so it doesn't
+        // overpower the bars — only drawn in the empty region above the bar)
+        if (i % 10 == 0 && barH < spec_barAreaH) {
+            int gx = x + w / 2;
+            tft.drawFastVLine(gx, spec_barAreaY, spec_barAreaH - barH, SPEC_GRID_COLOR);
+        }
+
         if (barH > 0) {
             uint16_t barColor = getSpectrumColor(level);
             tft.fillRect(x, spec_barAreaY + spec_barAreaH - barH, w, barH, barColor);
@@ -192,6 +203,12 @@ String scanChannels(bool web) {
             if (i > 0) result += ",";
             result += String(level);
         }
+    }
+
+    // Y-axis reference ticks at 25/50/75% on the left edge (static, low-key)
+    for (int p = 25; p <= 75; p += 25) {
+        int ty = spec_barAreaY + spec_barAreaH - (spec_barAreaH * p) / 100;
+        tft.drawFastHLine(0, ty, spec_marginL, SPEC_GRID_COLOR);
     }
 
     // Stats overlay (top, drawn after all bars)
@@ -297,7 +314,8 @@ void nrf_spectrum() {
     // Draw frequency labels at bottom with WiFi channel markers
     tft.setTextSize(FP);
     tft.setTextColor(bruceConfig.priColor, bruceConfig.bgColor);
-    int labelY = tftHeight - spec_footerH + 2;
+    int labelY = tftHeight - spec_footerH + 2;   // Row 1: frequency labels
+    int wifiY = tftHeight - spec_footerH + 11;   // Row 2: WiFi ch markers (8px gap)
     tft.drawString("2.400", spec_marginL, labelY, 1);
     tft.drawCentreString("2.462", tftWidth / 2, labelY, 1);
     tft.drawRightString("2.525", tftWidth - spec_marginL, labelY, 1);
@@ -309,7 +327,7 @@ void nrf_spectrum() {
     for (int w = 0; w < 3; w++) {
         int wx, ww;
         getBarGeom(wifiChs[w], wx, ww);
-        tft.drawCentreString(wifiLabels[w], wx + ww / 2, labelY + 7, 1);
+        tft.drawCentreString(wifiLabels[w], wx + ww / 2, wifiY, 1);
         // Draw vertical tick mark at separator line
         tft.drawFastVLine(wx + ww / 2, spec_barAreaY + spec_barAreaH + 1, 3, TFT_CYAN);
     }
