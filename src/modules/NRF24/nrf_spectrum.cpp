@@ -228,11 +228,11 @@ String scanChannels(bool web) {
             tft.setTextColor(TFT_YELLOW, bruceConfig.bgColor);
             tft.drawRightString(statBuf, tftWidth - spec_marginL - 2, stY, 1);
         }
-        // Left (below mode): active + sweep count
+        // Left (top corner): active + sweep count
         snprintf(statBuf, sizeof(statBuf), "ACT:%d SW:%lu", activeCh, sweepCount);
-        tft.fillRect(spec_marginL, stY + 10, 90, 9, bruceConfig.bgColor);
+        tft.fillRect(spec_marginL, stY, 90, 9, bruceConfig.bgColor);
         tft.setTextColor(TFT_CYAN, bruceConfig.bgColor);
-        tft.drawString(statBuf, spec_marginL, stY + 10, 1);
+        tft.drawString(statBuf, spec_marginL, stY, 1);
     }
 
     // ── Draw device labels (Mode 2 only) ──────────────────────────
@@ -339,7 +339,7 @@ void nrf_spectrum() {
     tft.setTextSize(FP);
     tft.setTextColor(bruceConfig.priColor, bruceConfig.bgColor);
     const char *modeStr[] = {"Mode:Bar+Peak", "Mode:Bar", "Mode:Device", "Mode:Waterfall"};
-    tft.drawString(modeStr[specDisplayMode], spec_marginL, 2, 1);
+    tft.drawString(modeStr[specDisplayMode], spec_marginL, 11, 1);
 
     if (nrf_start(NRF_MODE_SPI)) {
         // Configure for wideband spectrum sensing
@@ -373,10 +373,10 @@ void nrf_spectrum() {
                 // Redraw mode label (cleared first so a shorter name doesn't leave
                 // leftover characters from a longer previous name)
                 const char *modeStr[] = {"Mode:Bar+Peak", "Mode:Bar", "Mode:Device", "Mode:Waterfall"};
-                tft.fillRect(spec_marginL, 2, tftWidth / 2, 9, bruceConfig.bgColor);
+                tft.fillRect(spec_marginL, 11, tftWidth / 2, 9, bruceConfig.bgColor);
                 tft.setTextSize(FP);
                 tft.setTextColor(bruceConfig.priColor, bruceConfig.bgColor);
-                tft.drawString(modeStr[specDisplayMode], spec_marginL, 2, 1);
+                tft.drawString(modeStr[specDisplayMode], spec_marginL, 11, 1);
                 delay(200);
             }
         }
