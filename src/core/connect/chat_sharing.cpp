@@ -2,6 +2,17 @@
 #include "chat_sharing.h"
 #include "core/display.h"
 #include "core/mykeyboard.h"
+#include <WiFi.h>
+#include <esp_wifi.h>
+
+// setupPeer() (in EspConnection) registers peers with channel=0, meaning
+// "whatever channel WiFi is on right now". Without ever connecting to an
+// AP, that channel is NOT deterministic - it depends on each device's WiFi
+// history/NVS state, so two devices can easily end up on different
+// channels and never see each other (or only sometimes, if they happen to
+// match). Pinning both devices to the same fixed channel before starting
+// ESP-NOW makes discovery and delivery reliable.
+static constexpr uint8_t CHAT_WIFI_CHANNEL = 1;
 
 ChatSharing::ChatSharing() {}
 
@@ -86,6 +97,12 @@ void ChatSharing::run() {
     drawMainBorderWithTitle("ESP-NOW Chat");
     padprintln("");
     padprintln("Searching for devices...");
+
+    // Force a known, fixed channel BEFORE starting ESP-NOW. beginEspnow()
+    // (called inside beginSend()) also calls WiFi.mode(WIFI_STA), which is
+    // safe to call again here and does not reset the channel we just set.
+    WiFi.mode(WIFI_STA);
+    esp_wifi_set_channel(CHAT_WIFI_CHANNEL, WIFI_SECOND_CHAN_NONE);
 
     // beginSend() is inherited (protected) from EspConnection. It starts the
     // radio, pings the broadcast address, then opens a menu with "Broadcast"
