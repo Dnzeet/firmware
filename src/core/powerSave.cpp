@@ -1,5 +1,6 @@
 #include "powerSave.h"
 #include "display.h"
+#include "mykeyboard.h" // for goToDeepSleep()
 #include "settings.h"
 
 /* Check if it's time to put the device to sleep */
@@ -14,9 +15,21 @@ void fadeOutScreen(int startValue) {
 }
 
 void checkPowerSaveTime() {
+    unsigned long elapsed = millis() - previousMillis;
+
+    // Auto deep-sleep: fires independently of the dimmer setting, since a
+    // user may want the screen to stay bright but still auto-sleep on total
+    // inactivity (or vice-versa). Device wakes via the board's wake button.
+    if (bruceConfig.autoSleepSet > 0 && !isSleeping) {
+        unsigned long autoSleepMs = (unsigned long)bruceConfig.autoSleepSet * 1000UL;
+        if (elapsed >= autoSleepMs) {
+            goToDeepSleep();
+            return; // Unreachable after deep sleep on boards that support it
+        }
+    }
+
     if (bruceConfig.dimmerSet == 0) return;
 
-    unsigned long elapsed = millis() - previousMillis;
     int startDimmerBright = bruceConfig.bright / 3;
     int dimmerSetMs = bruceConfig.dimmerSet * 1000;
 

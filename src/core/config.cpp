@@ -13,6 +13,7 @@ JsonDocument BruceConfig::toJson() const {
     setting["themeOnSd"] = theme.fs;
 
     setting["dimmerSet"] = dimmerSet;
+    setting["autoSleepSet"] = autoSleepSet;
     setting["bright"] = bright;
     setting["automaticTimeUpdateViaNTP"] = automaticTimeUpdateViaNTP;
     setting["tmz"] = tmz;
@@ -154,6 +155,13 @@ void BruceConfig::fromFile(bool checkFS) {
 
     if (!setting["dimmerSet"].isNull()) {
         dimmerSet = setting["dimmerSet"].as<int>();
+    } else {
+        count++;
+        log_e("Fail");
+    }
+
+    if (!setting["autoSleepSet"].isNull()) {
+        autoSleepSet = setting["autoSleepSet"].as<int>();
     } else {
         count++;
         log_e("Fail");
@@ -504,6 +512,25 @@ void BruceConfig::setDimmer(int value) {
 void BruceConfig::validateDimmerValue() {
     if (dimmerSet < 0) dimmerSet = 10;
     if (dimmerSet > 60) dimmerSet = 0;
+}
+
+void BruceConfig::setAutoSleep(int value) {
+    autoSleepSet = value;
+    validateAutoSleepValue();
+    saveFile();
+}
+
+void BruceConfig::validateAutoSleepValue() {
+    // Allowed: 0 (disabled), or 60/180/300/600/1800 seconds
+    static const int allowed[] = {0, 60, 180, 300, 600, 1800};
+    bool ok = false;
+    for (int v : allowed) {
+        if (autoSleepSet == v) {
+            ok = true;
+            break;
+        }
+    }
+    if (!ok) autoSleepSet = 0;
 }
 
 void BruceConfig::setBright(uint8_t value) {

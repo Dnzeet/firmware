@@ -197,6 +197,30 @@ void setDimmerTimeMenu() {
 }
 
 /*********************************************************************
+**  Function: setAutoSleepMenu
+**  Handles Menu to set auto deep-sleep timeout (device fully powers
+**  down after total inactivity; wakes on the board's wake button)
+**********************************************************************/
+void setAutoSleepMenu() {
+    int idx = 0;
+    if (bruceConfig.autoSleepSet == 60) idx = 0;
+    else if (bruceConfig.autoSleepSet == 180) idx = 1;
+    else if (bruceConfig.autoSleepSet == 300) idx = 2;
+    else if (bruceConfig.autoSleepSet == 600) idx = 3;
+    else if (bruceConfig.autoSleepSet == 1800) idx = 4;
+    else if (bruceConfig.autoSleepSet == 0) idx = 5;
+    options = {
+        {"1 min",    [=]() { bruceConfig.setAutoSleep(60); },   bruceConfig.autoSleepSet == 60  },
+        {"3 min",    [=]() { bruceConfig.setAutoSleep(180); },  bruceConfig.autoSleepSet == 180 },
+        {"5 min",    [=]() { bruceConfig.setAutoSleep(300); },  bruceConfig.autoSleepSet == 300 },
+        {"10 min",   [=]() { bruceConfig.setAutoSleep(600); },  bruceConfig.autoSleepSet == 600 },
+        {"30 min",   [=]() { bruceConfig.setAutoSleep(1800); }, bruceConfig.autoSleepSet == 1800},
+        {"Disabled", [=]() { bruceConfig.setAutoSleep(0); },    bruceConfig.autoSleepSet == 0   },
+    };
+    loopOptions(options, idx);
+}
+
+/*********************************************************************
 **  Function: setUIColor
 **  Set and store main UI color
 **********************************************************************/
