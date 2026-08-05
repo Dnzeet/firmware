@@ -1,6 +1,6 @@
 #include "powerSave.h"
 #include "display.h"
-#include "mykeyboard.h" // for goToDeepSleep()
+#include "mykeyboard.h" // for powerOff()
 #include "settings.h"
 
 /* Check if it's time to put the device to sleep */
@@ -19,11 +19,15 @@ void checkPowerSaveTime() {
 
     // Auto deep-sleep: fires independently of the dimmer setting, since a
     // user may want the screen to stay bright but still auto-sleep on total
-    // inactivity (or vice-versa). Device wakes via the board's wake button.
+    // inactivity (or vice-versa). Uses powerOff() — the same board hook the
+    // manual "Power Off" menu uses — rather than goToDeepSleep(), since some
+    // boards (e.g. T-Display-S3) implement their real sleep+wake logic
+    // inside powerOff() and leave goToDeepSleep() as the unimplemented
+    // default ("Not available").
     if (bruceConfig.autoSleepSet > 0 && !isSleeping) {
         unsigned long autoSleepMs = (unsigned long)bruceConfig.autoSleepSet * 1000UL;
         if (elapsed >= autoSleepMs) {
-            goToDeepSleep();
+            powerOff();
             return; // Unreachable after deep sleep on boards that support it
         }
     }
