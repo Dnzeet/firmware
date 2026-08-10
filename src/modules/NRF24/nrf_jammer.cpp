@@ -176,7 +176,15 @@ void nrf_jammer() {
                     if ((CHECK_NRF_UART(mode)) || (CHECK_NRF_BOTH(mode))) { NRFSerial.println("OFF"); }
                 } else {
                     if (CHECK_NRF_SPI(mode)) {
-                        NRFradio.startConstCarrier(RF24_PA_MAX, 50);
+                        // Re-apply the full init sequence, matching initial
+                        // setup 1:1 — resuming previously only re-called
+                        // startConstCarrier()+data rate, which sometimes
+                        // left the radio unable to jam again after a
+                        // pause/resume cycle.
+                        NRFradio.setPALevel(RF24_PA_MAX);
+                        NRFradio.startConstCarrier(RF24_PA_MAX, modes[modeIndex].channels[hopIndex]);
+                        NRFradio.setAddressWidth(5);
+                        NRFradio.setPayloadSize(2);
                         applyModeDataRate(modeIndex);
                     }
                     if ((CHECK_NRF_UART(mode)) || (CHECK_NRF_BOTH(mode))) {
