@@ -150,7 +150,25 @@ void nrf_jammer() {
             // Pause/resume on Up/Down — stops the carrier entirely while
             // paused (not just freezing the UI), so it's also a quick way
             // to save battery mid-session without exiting.
-            if (check(UpPress) || check(DownPress)) {
+            // Pause/resume on Space — deliberately NOT Up/Down: on Cardputer
+            // those keys are hardwired to also fire PrevPress/NextPress at
+            // the same time (see boards/m5stack-cardputer/interface.cpp),
+            // so using them here caused an unconsumed mode-switch to fire
+            // later once paused code skipped past the Next/Prev handling.
+            // Space is a plain character key with no other binding here.
+            static bool spaceWasDown = false;
+            bool spaceIsDown = false;
+            if (KeyStroke.pressed) {
+                for (char c : KeyStroke.word) {
+                    if (c == ' ') {
+                        spaceIsDown = true;
+                        break;
+                    }
+                }
+            }
+            bool spacePress = spaceIsDown && !spaceWasDown; // rising edge only
+            spaceWasDown = spaceIsDown;
+            if (spacePress) {
                 paused = !paused;
                 redraw = true;
                 if (paused) {
@@ -181,7 +199,7 @@ void nrf_jammer() {
                     padprintln("MODE : " + _modeName);
                     padprintln("HOP  : " + String(hopping_mode == 0 ? "Sequential " : "FHSS        "));
                     padprintln("");
-                    padprintln("> Resume: Up/Down");
+                    padprintln("> Resume: Space");
                     padprintln("> Exit: Esc");
                     tft.drawRoundRect(5, 5, tftWidth - 10, tftHeight - 10, 5, bruceConfig.priColor);
                     redraw = false;
@@ -220,7 +238,7 @@ void nrf_jammer() {
                 padprintln("");
                 padprintln("> Switch Mode: Next/Prev");
                 padprintln("> Hop Mode: Sel");
-                padprintln("> Pause: Up/Down");
+                padprintln("> Pause: Space");
                 padprintln("> Exit: Esc");
 
                 tft.drawRoundRect(5, 5, tftWidth - 10, tftHeight - 10, 5, bruceConfig.priColor);
