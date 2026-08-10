@@ -69,17 +69,23 @@ static const struct DeviceInfo deviceInfo[] = {
 
 // Detect device type from channel number
 static inline DeviceType getDeviceType(int channel) {
-    // WiFi: ch 1-14 (2.412-2.484 GHz) → NRF ch 12-84
-    if (channel >= 12 && channel <= 84) return DEV_WIFI;
-
-    // BLE Advertising: ch 37-39 (2.402, 2.426, 2.480 GHz) → NRF ch 2, 26, 80
+    // BLE Advertising: exact landmark channels — most specific, check first
+    // (ch 37/38/39 at 2.402/2.426/2.480 GHz → NRF ch 2, 26, 80)
     if (channel == 2 || channel == 26 || channel == 80) return DEV_BLE;
 
-    // BT Classic: ch ~50-79 (2.450-2.480 GHz) → NRF ch 50-79
+    // Zigbee/Thread: distinct 5-step grid — check before the broad WiFi
+    // range below, since most of this grid (15,20,...,80) sits inside it
+    // (2.405-2.480 GHz) → NRF ch 5,10,15...80
+    if (channel >= 5 && channel <= 80 && (channel - 5) % 5 == 0) return DEV_ZIGBEE;
+
+    // BT Classic: ch ~50-79 (2.450-2.480 GHz) → NRF ch 50-79 — also sits
+    // inside WiFi's range, so it must be checked before the WiFi fallback
     if (channel >= 50 && channel <= 79) return DEV_BT;
 
-    // Zigbee/Thread: ch 11-26 + 5-80 with 5MHz spacing (2.405-2.480 GHz) → NRF ch 5,10,15...80
-    if (channel >= 5 && channel <= 80 && (channel - 5) % 5 == 0) return DEV_ZIGBEE;
+    // WiFi: ch 1-14 (2.412-2.484 GHz) → NRF ch 12-84 — broad catch-all,
+    // checked LAST since this range would otherwise swallow every other
+    // category above (that was the bug: WiFi was first and ate everything)
+    if (channel >= 12 && channel <= 84) return DEV_WIFI;
 
     return DEV_NONE;
 }
