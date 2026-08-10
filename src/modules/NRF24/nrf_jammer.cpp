@@ -176,11 +176,12 @@ void nrf_jammer() {
                     if ((CHECK_NRF_UART(mode)) || (CHECK_NRF_BOTH(mode))) { NRFSerial.println("OFF"); }
                 } else {
                     if (CHECK_NRF_SPI(mode)) {
-                        // Re-apply the full init sequence, matching initial
-                        // setup 1:1 — resuming previously only re-called
-                        // startConstCarrier()+data rate, which sometimes
-                        // left the radio unable to jam again after a
-                        // pause/resume cycle.
+                        // nrf_start() re-asserts CE LOW / CS HIGH before
+                        // begin() — stopConstCarrier() can leave CE stuck
+                        // HIGH internally (see the comment in nrf_start()
+                        // itself), which is why a partial re-init here
+                        // wasn't enough to jam again after resuming.
+                        nrf_start(mode);
                         NRFradio.setPALevel(RF24_PA_MAX);
                         NRFradio.startConstCarrier(RF24_PA_MAX, modes[modeIndex].channels[hopIndex]);
                         NRFradio.setAddressWidth(5);
