@@ -251,7 +251,18 @@ bool initRfModule(String mode, float frequency) {
             ELECHOUSE_cc1101.setBeginEndLogic(true);
             initCC1101once(NULL);
         }
-        ELECHOUSE_cc1101.Init();
+        // ELECHOUSE_cc1101.Init() must only run once per power cycle — the
+        // driver itself warns that calling it again mid-session can put the
+        // radio in a bad state (https://github.com/LSatan/SmartRC-CC1101-Driver-Lib/issues/65).
+        // Re-entering RF features (jammer, scan, etc.) previously re-called
+        // Init() every time, which is the likely cause of "works once, then
+        // fails" behavior — guard it so only the very first activation
+        // actually initializes the chip; later calls just refresh pins/SPI.
+        static bool cc1101_hw_initialized = false;
+        if (!cc1101_hw_initialized) {
+            ELECHOUSE_cc1101.Init();
+            cc1101_hw_initialized = true;
+        }
         if (ELECHOUSE_cc1101.getCC1101()) { // Check the CC1101 Spi connection.
             Serial.println("cc1101 Connection OK");
         } else {
