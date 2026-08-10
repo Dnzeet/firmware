@@ -2,6 +2,7 @@
 #include "core/display.h"
 #include "core/mykeyboard.h"
 #include "nrf_common.h"
+#include <cstring>
 #include <globals.h>
 
 static void shuffleChannels(uint8_t *arr, size_t count) {
@@ -27,7 +28,11 @@ void nrf_jammer() {
     byte ble_channels[] = {2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
                            22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41};
 
-    byte ble_adv_priority[] = {37, 38, 39, 1, 2, 3, 25, 26, 27, 79, 80, 81};
+    // BLE advertising channels 37/38/39 sit at 2402/2426/2480 MHz, which on
+    // nRF24 are raw channel 2/26/80 — NOT the literal numbers 37/38/39
+    // (channel 37 on nRF24 = 2437 MHz, which lands dead-center in WiFi ch6).
+    // Spread of ±1 around each true center for a bit of margin.
+    byte ble_adv_priority[] = {1, 2, 3, 25, 26, 27, 79, 80, 81};
 
     byte bluetooth_channels[] = {2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17,
                                  18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33,
@@ -91,13 +96,30 @@ void nrf_jammer() {
         int hopIndex = 0;
         bool redraw = true;
         bool need_reshuffle = true;
+        bool paused = false;
         uint8_t shuffled_idx[124];
-        if (CHECK_NRF_SPI(mode)) {
-            NRFradio.setPALevel(RF24_PA_MAX);
-            NRFradio.startConstCarrier(RF24_PA_MAX, 50);
-            NRFradio.setAddressWidth(5);
-            NRFradio.setPayloadSize(2);
-            if (!NRFradio.setDataRate(RF24_2MBPS)) {
+
+        // BLE Adv Pri needs a narrower carrier so it doesn't bleed into
+        // neighboring WiFi channels; other modes keep the widest usable rate
+        // since a wider carrier is fine (often preferable) for broad-noise
+        // modes like WiFi/Full.
+        auto isNarrowMode = [&](int idx) {
+            const char *n = modes[idx].name;
+            // These three all sit squarely inside WiFi's occupied range
+            // (BLEch: 2402-2441MHz spans WiFi ch1-6; Bluetooth: 2402-2480MHz
+            // spans nearly all of WiFi ch1-11), so a narrower carrier keeps
+            // the jam tighter on the actual target instead of bleeding
+            // across neighboring WiFi channels.
+            return strcmp(n, "BLE Adv Pri ") == 0 || strcmp(n, "BLEch       ") == 0 ||
+                   strcmp(n, "Bluetooth   ") == 0;
+        };
+        auto applyModeDataRate = [&](int idx) {
+            if (!CHECK_NRF_SPI(mode)) return;
+            if (isNarrowMode(idx)) {
+                if (!NRFradio.setDataRate(RF24_250KBPS)) {
+                    Serial.println("Failed to set data rate to 250kbps for " + String(modes[idx].name));
+                }
+            } else if (!NRFradio.setDataRate(RF24_2MBPS)) {
                 Serial.println("Failed to set data rate to 2Mbps, trying 1Mbps");
                 if (!NRFradio.setDataRate(RF24_1MBPS)) {
                     Serial.println("Failed to set data rate to 1Mbps, trying 250kbps");
@@ -106,6 +128,14 @@ void nrf_jammer() {
                     }
                 }
             }
+        };
+
+        if (CHECK_NRF_SPI(mode)) {
+            NRFradio.setPALevel(RF24_PA_MAX);
+            NRFradio.startConstCarrier(RF24_PA_MAX, 50);
+            NRFradio.setAddressWidth(5);
+            NRFradio.setPayloadSize(2);
+            applyModeDataRate(modeIndex);
         }
 
         drawMainBorder();
@@ -114,6 +144,52 @@ void nrf_jammer() {
         vTaskDelay(50 / portTICK_PERIOD_MS);
 
         while (true) {
+
+            previousMillis = millis(); // Prevent screen dimming/sleep while jammer is active
+
+            // Pause/resume on Up/Down — stops the carrier entirely while
+            // paused (not just freezing the UI), so it's also a quick way
+            // to save battery mid-session without exiting.
+            if (check(UpPress) || check(DownPress)) {
+                paused = !paused;
+                redraw = true;
+                if (paused) {
+                    if (CHECK_NRF_SPI(mode)) NRFradio.stopConstCarrier();
+                    if ((CHECK_NRF_UART(mode)) || (CHECK_NRF_BOTH(mode))) { NRFSerial.println("OFF"); }
+                } else {
+                    if (CHECK_NRF_SPI(mode)) {
+                        NRFradio.startConstCarrier(RF24_PA_MAX, 50);
+                        applyModeDataRate(modeIndex);
+                    }
+                    if ((CHECK_NRF_UART(mode)) || (CHECK_NRF_BOTH(mode))) {
+                        String Mode = modes[modeIndex].name;
+                        Mode.replace(" ", "");
+                        NRFSerial.println("RADIOS");
+                        vTaskDelay(50 / portTICK_PERIOD_MS);
+                        NRFSerial.println(Mode);
+                    }
+                }
+            }
+
+            if (paused) {
+                if (redraw) {
+                    drawMainBorderWithTitle("NRF JAMMER", false);
+                    printSubtitle("NRF function Jammer");
+                    padprintln("STATUS : PAUSED         ");
+                    String _modeName = String(modes[modeIndex].name) + "            ";
+                    _modeName = _modeName.substring(0, 13);
+                    padprintln("MODE : " + _modeName);
+                    padprintln("HOP  : " + String(hopping_mode == 0 ? "Sequential " : "FHSS        "));
+                    padprintln("");
+                    padprintln("> Resume: Up/Down");
+                    padprintln("> Exit: Esc");
+                    tft.drawRoundRect(5, 5, tftWidth - 10, tftHeight - 10, 5, bruceConfig.priColor);
+                    redraw = false;
+                }
+                if (check(EscPress)) break;
+                vTaskDelay(30 / portTICK_PERIOD_MS);
+                continue; // Skip hopping/transmit logic entirely while paused
+            }
 
             if ((CHECK_NRF_UART(mode)) || (CHECK_NRF_BOTH(mode))) {
                 if (OnX == 0) {
@@ -144,6 +220,7 @@ void nrf_jammer() {
                 padprintln("");
                 padprintln("> Switch Mode: Next/Prev");
                 padprintln("> Hop Mode: Sel");
+                padprintln("> Pause: Up/Down");
                 padprintln("> Exit: Esc");
 
                 tft.drawRoundRect(5, 5, tftWidth - 10, tftHeight - 10, 5, bruceConfig.priColor);
@@ -180,6 +257,7 @@ void nrf_jammer() {
                 hopIndex = 0;
                 need_reshuffle = true;
                 redraw = true;
+                applyModeDataRate(modeIndex);
             }
             if (check(PrevPress)) {
                 modeIndex--;
@@ -187,6 +265,7 @@ void nrf_jammer() {
                 hopIndex = 0;
                 need_reshuffle = true;
                 redraw = true;
+                applyModeDataRate(modeIndex);
             }
             if (check(EscPress)) break;
             if (check(SelPress)) {
