@@ -21,15 +21,15 @@
 #define SDCARD_MOSI SPI_MOSI_PIN
 
 #define USE_CC1101_VIA_SPI
-#define CC1101_GDO0_PIN 39
-#define CC1101_SS_PIN 32
+#define CC1101_GDO0_PIN 37
+#define CC1101_SS_PIN 38
 #define CC1101_MOSI_PIN SPI_MOSI_PIN
 #define CC1101_SCK_PIN SPI_SCK_PIN
 #define CC1101_MISO_PIN SPI_MISO_PIN
 
 #define USE_NRF24_VIA_SPI
-#define NRF24_CE_PIN 37
-#define NRF24_SS_PIN 38
+#define NRF24_CE_PIN 39
+#define NRF24_SS_PIN 32
 #define NRF24_MOSI_PIN SPI_MOSI_PIN
 #define NRF24_SCK_PIN SPI_SCK_PIN
 #define NRF24_MISO_PIN SPI_MISO_PIN
@@ -71,7 +71,7 @@ static const uint8_t SCL = GROVE_SCL;
 
 // Display Setup#
 #define HAS_SCREEN
-#define ROTATION 3
+#define ROTATION 1
 #define MINBRIGHT (uint8_t)1
 
 // Font Sizes#
@@ -92,8 +92,8 @@ static const uint8_t SCL = GROVE_SCL;
 // Buttons & Navigation
 #define BTN_ALIAS "\"OK\""
 #define HAS_3_BUTTONS
-#define UP_BTN 0
-#define DW_BTN 35
+#define UP_BTN 35
+#define DW_BTN 0
 #define BTN_ACT LOW
 
 // IR pins
