@@ -197,6 +197,25 @@ void setDimmerTimeMenu() {
 }
 
 /*********************************************************************
+**  Function: setAutoOffMenu
+**  Handles Menu to set auto power off/deep sleep time (in minutes)
+**********************************************************************/
+void setAutoOffMenu() {
+    int idx = 0;
+    if (bruceConfig.autoOffSet == 20) idx = 0;
+    else if (bruceConfig.autoOffSet == 30) idx = 1;
+    else if (bruceConfig.autoOffSet == 60) idx = 2;
+    else if (bruceConfig.autoOffSet == 0) idx = 3;
+    options = {
+        {"20 min",  [=]() { bruceConfig.setAutoOff(20); }, bruceConfig.autoOffSet == 20},
+        {"30 min",  [=]() { bruceConfig.setAutoOff(30); }, bruceConfig.autoOffSet == 30},
+        {"60 min",  [=]() { bruceConfig.setAutoOff(60); }, bruceConfig.autoOffSet == 60},
+        {"Off",     [=]() { bruceConfig.setAutoOff(0); },  bruceConfig.autoOffSet == 0 },
+    };
+    loopOptions(options, idx);
+}
+
+/*********************************************************************
 **  Function: setUIColor
 **  Set and store main UI color
 **********************************************************************/

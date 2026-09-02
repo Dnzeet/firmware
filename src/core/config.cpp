@@ -14,6 +14,7 @@ JsonDocument BruceConfig::toJson() const {
     setting["themeOnSd"] = theme.fs;
 
     setting["dimmerSet"] = dimmerSet;
+    setting["autoOffSet"] = autoOffSet;
     setting["bright"] = bright;
     setting["automaticTimeUpdateViaNTP"] = automaticTimeUpdateViaNTP;
     setting["tmz"] = tmz;
@@ -155,6 +156,12 @@ void BruceConfig::fromFile(bool checkFS) {
 
     if (!setting["dimmerSet"].isNull()) {
         dimmerSet = setting["dimmerSet"].as<int>();
+    } else {
+        count++;
+        log_e("Fail");
+    }
+    if (!setting["autoOffSet"].isNull()) {
+        autoOffSet = setting["autoOffSet"].as<int>();
     } else {
         count++;
         log_e("Fail");
@@ -467,6 +474,7 @@ void BruceConfig::factoryReset() {
 
 void BruceConfig::validateConfig() {
     validateDimmerValue();
+    validateAutoOffValue();
     validateBrightValue();
     validateTmzValue();
     validateSoundEnabledValue();
@@ -505,6 +513,16 @@ void BruceConfig::setDimmer(int value) {
 void BruceConfig::validateDimmerValue() {
     if (dimmerSet < 0) dimmerSet = 10;
     if (dimmerSet > 60) dimmerSet = 0;
+}
+
+void BruceConfig::setAutoOff(int value) {
+    autoOffSet = value;
+    validateAutoOffValue();
+    saveFile();
+}
+
+void BruceConfig::validateAutoOffValue() {
+    if (autoOffSet != 0 && autoOffSet != 20 && autoOffSet != 30 && autoOffSet != 60) autoOffSet = 0;
 }
 
 void BruceConfig::setBright(uint8_t value) {
