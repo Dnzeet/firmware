@@ -25,6 +25,11 @@ on:
     tags:
       - "*"
   workflow_dispatch:
+    inputs:
+      custom_version:
+        description: 'Custom version string (optional, overrides tag/commit hash). Example: 1.16.1-custom, beta-2'
+        required: false
+        default: ''
 
 jobs:
   compile_sketch:
@@ -144,20 +149,39 @@ jobs:
           pip install requests esptool intelhex
           pip install platformio
 
-      - name: Prepare PlatformIO file
+      - name: Prepare PlatformIO file (with custom version support)
         run: |
-
-          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+          # Priority: custom_version input > git tag > commit hash
+          CUSTOM_VERSION="${{ github.event.inputs.custom_version }}"
+          
+          if [[ -n "$CUSTOM_VERSION" ]]; then
+            # User provided custom version via workflow_dispatch input
+            version="$CUSTOM_VERSION"
+            echo "Using custom version from workflow input: $version"
+          elif [[ "${{ github.ref_type }}" == "tag" ]]; then
+            # Official release via git tag
             version=${{ github.ref_name }}
-            sed -i "s/-D ENABLE_RAM_LOGGING=1/;-D ENABLE_RAM_LOGGING=1'\"$version\"' ; /g" ./platformio.ini
+            echo "Using git tag version: $version"
           else
+            # Commit hash for regular push
             version="${GITHUB_SHA::7}"
+            echo "Using commit hash version: $version"
           fi
-
-          sed -i "s/-DBRUCE_VERSION=/-DBRUCE_VERSION='\"$version\"' ; /g" ./platformio.ini
-          sed -i "s/-DGIT_COMMIT_HASH='\"Homebrew\"'/\!echo '-DGIT_COMMIT_HASH=\\\\\\\\\"'\$\(git describe --always --dirty)'\\\\\\\\\"'/g" ./platformio.ini
-
-          cat ./platformio.ini
+          
+          echo "================================================"
+          echo "BUILD VERSION: $version"
+          echo "================================================"
+          
+          # Replace version in platformio.ini
+          sed -i "s/-DBRUCE_VERSION='\"[^\"]*\"'/-DBRUCE_VERSION='\"$version\"'/g" ./platformio.ini
+          
+          # Also set GIT_COMMIT_HASH to short commit hash
+          SHORT_SHA="${GITHUB_SHA::7}"
+          sed -i "s/-DGIT_COMMIT_HASH='\"[^\"]*\"'/-DGIT_COMMIT_HASH='\"$SHORT_SHA\"'/g" ./platformio.ini
+          
+          echo ""
+          echo "Updated platformio.ini:"
+          grep -E "BRUCE_VERSION|GIT_COMMIT_HASH" ./platformio.ini
 
       - name: Run Compile
         run: |
@@ -321,13 +345,18 @@ jobs:
         run: |
           set -x
 
-          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+          CUSTOM_VERSION="${{ github.event.inputs.custom_version }}"
+          
+          if [[ -n "$CUSTOM_VERSION" ]]; then
+            version="$CUSTOM_VERSION"
+          elif [[ "${{ github.ref_type }}" == "tag" ]]; then
             version=${{ github.ref_name }}
           else
             version="${GITHUB_SHA::7}"
           fi
 
-          echo "version=${version}" > $GITHUB_OUTPUT
+          echo "version=${version}" >> $GITHUB_OUTPUT
+          
       - uses: actions/download-artifact@v4
         with:
           merge-multiple: true
@@ -367,3 +396,4 @@ jobs:
               --repo "${{ github.repository }}" \
               --comment "Fixed on ${VERSION}. Issue automatically closed after release"
           done
+          
