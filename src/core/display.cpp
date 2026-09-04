@@ -571,7 +571,7 @@ int loopOptions(
                 bruceConfig.setDevMode(true);
                 displayInfo("Dev Mode Enabled", true);
             }
-            if (millis() - _clock_bat_timer > 30000) {
+            if (millis() - _clock_bat_timer > 1000) {
                 _clock_bat_timer = millis();
                 drawStatusBar(); // update clock and battery status each 30s
             }
