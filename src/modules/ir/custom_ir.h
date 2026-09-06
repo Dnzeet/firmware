@@ -1,4 +1,6 @@
 
+#pragma once
+
 #include <Arduino.h>
 #include <FS.h>
 #include <IRremoteESP8266.h>
@@ -51,3 +53,15 @@ bool sendDecodedCommand(String protocol, String value, uint8_t bits = 32, bool h
 void otherIRcodes();
 bool txIrFile(FS *fs, const String &filepath, bool hideDefaultUI = false);
 bool chooseCmdIrFile(FS *fs, const String &filepath);
+// Same file-parsing/picker UI as chooseCmdIrFile(), but returns the chosen
+// command via outCode instead of transmitting it immediately -- used by IR
+// Timed Transmit, which needs to hold onto the selected code until a delay
+// countdown finishes. Return values:
+//   0 = a command was picked, outCode is filled in
+//   1 = user backed out to the file browser (short ESC / no selection)
+//   2 = user backed out to the main menu (long-press ESC / "Main Menu")
+int pickCmdIrFile(FS *fs, const String &filepath, IRCode &outCode);
+// Entry point for the new "Timed Transmit" IR submenu: pick a source
+// (Custom IR file / TV-B-Gone / Record New Signal), pick a delay, then
+// wait and fire automatically. Registered from IRMenu.cpp.
+void timedIrTransmitMenu();
