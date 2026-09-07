@@ -944,6 +944,19 @@ bool runCountdown(int totalSeconds, const String &label) {
 
     int barX = 20, barY = tftHeight - 30, barW = tftWidth - 40, barH = 14;
 
+    // Static parts drawn ONCE: full clear (wipes any leftover text from
+    // the previous confirmation screen) + label + footer hint. Only the
+    // number and the bar fill change per tick from here on, so redrawing
+    // the whole screen every second (which caused both the flicker and
+    // stale/overlapping text) is avoided entirely.
+    drawMainBorder();
+    tft.setTextSize(FM);
+    tft.drawCentreString(label, tftWidth / 2, 30, 1);
+    tft.setTextSize(FP);
+    tft.setCursor(barX, barY + barH + 4);
+    tft.println("hold ESC to cancel");
+    tft.drawRect(barX, barY, barW, barH, bruceConfig.priColor);
+
     while (true) {
         if (check(EscPress)) return false;
 
@@ -959,19 +972,14 @@ bool runCountdown(int totalSeconds, const String &label) {
             char buf[16];
             snprintf(buf, sizeof(buf), "%02d:%02d", mm, ss);
 
-            tft.fillRect(0, 40, tftWidth, 60, bruceConfig.bgColor);
-            tft.setTextSize(FM);
-            tft.drawCentreString(label, tftWidth / 2, 30, 1);
+            tft.fillRect(0, 45, tftWidth, 45, bruceConfig.bgColor);
             tft.setTextSize(3);
             tft.drawCentreString(buf, tftWidth / 2, 55, 1);
             tft.setTextSize(FP);
 
             float prog = (float)(totalSeconds - leftSec) / (float)totalSeconds;
-            int fillW = (int)(barW * prog);
-            tft.drawRect(barX, barY, barW, barH, bruceConfig.priColor);
-            tft.fillRect(barX + 1, barY + 1, fillW, barH - 2, bruceConfig.priColor);
-            tft.setCursor(barX, barY + barH + 4);
-            tft.println("hold ESC to cancel");
+            int fillW = (int)((barW - 2) * prog);
+            if (fillW > 0) tft.fillRect(barX + 1, barY + 1, fillW, barH - 2, bruceConfig.priColor);
         }
         delay(100);
     }
