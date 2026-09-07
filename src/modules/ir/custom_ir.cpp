@@ -6,6 +6,7 @@
 #include "core/sd_functions.h"
 #include "core/settings.h"
 #include "core/type_convertion.h"
+#include "core/utils.h" // for addOptionToMainMenu()
 #include "ir_utils.h"
 #include <IRutils.h>
 
