@@ -1,5 +1,8 @@
+#pragma once
+
 #include <IRrecv.h>
 #include <globals.h>
+#include "custom_ir.h"
 
 class IrRead {
 public:
@@ -12,6 +15,16 @@ public:
     void quickLoop();
 
     String loop_headless(int max_loops);
+
+    // Waits for a single IR signal (blocking, ESC to cancel) and fills
+    // outCode with it -- same protocol/address/command/raw extraction as
+    // the normal Record flow's "test fire" (emulate_signal()), just
+    // handed back to the caller instead of transmitting immediately.
+    // Draws its own "Point remote and press a button" prompt. Returns
+    // false if the user pressed ESC before a signal was captured.
+    // Does NOT write anything to storage -- the caller decides whether to
+    // keep/save the code afterward.
+    bool captureOneSignal(IRCode &outCode);
 
 private:
     bool _read_signal = false;
@@ -33,6 +46,7 @@ private:
     void begin();
     void read_signal();
     void emulate_signal();
+    void buildCodeFromResult(IRCode &code); // shared by emulate_signal() and captureOneSignal()
     void save_device();
     void save_signal();
     void discard_signal();

@@ -268,8 +268,7 @@ void IrRead::discard_signal() {
     begin();
 }
 
-void IrRead::emulate_signal() {
-    IRCode code;
+void IrRead::buildCodeFromResult(IRCode &code) {
     if (raw) {
         code.type = "raw";
         code.frequency = IR_FREQUENCY;
@@ -289,6 +288,11 @@ void IrRead::emulate_signal() {
             code.data = _captured_raw_signal;
         }
     }
+}
+
+void IrRead::emulate_signal() {
+    IRCode code;
+    buildCodeFromResult(code);
     sendIRCommand(&code);
     if (code.type == "parsed" &&
         (code.protocol == "RC5" || code.protocol == "RC5X" || code.protocol == "RC6")) {
@@ -300,6 +304,21 @@ void IrRead::emulate_signal() {
     tft.setTextSize(FP);
     padprintln("Signal emulated!");
     display_btn_options();
+}
+
+bool IrRead::captureOneSignal(IRCode &outCode) {
+    begin(); // draws its own "Waiting for signal..." prompt
+
+    _read_signal = false;
+    while (!_read_signal) {
+        if (check(EscPress)) return false;
+        read_signal(); // sets _read_signal = true and fills results/raw on capture
+        delay(10);
+    }
+
+    buildCodeFromResult(outCode);
+    irrecv.resume();
+    return true;
 }
 
 void IrRead::save_signal() {
