@@ -83,12 +83,6 @@ void quickflashLEDx(uint8_t x);
 void delay_ten_us(uint16_t us);
 void quickflashLED(void);
 void StartTvBGone();
-// Region-preselected variant: skips the interactive NA/EU picker and sends
-// codes for the given region immediately. Used by IR Timed Transmit so the
-// region can be chosen up front, before a delay countdown, and the actual
-// blast can fire unattended when the timer reaches zero.
-// region: 1 = NA, 0 = EU (matches the NA/EU #defines in TV-B-Gone.cpp)
-void StartTvBGoneForRegion(uint8_t region);
 void checkIrTxPin();
 bool init_ir_tx_mutex();
 void lock_ir_tx();

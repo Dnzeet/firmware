@@ -242,7 +242,14 @@ void StartTvBGone() {
         return;
     }
 
+    Serial.begin(115200);
+#ifdef USE_BOOST
+    PPM.enableOTG();
+#endif
     checkIrTxPin();
+    IRsend irsend(bruceConfigPins.irTx);
+    irsend.begin();
+    setup_ir_pin(bruceConfigPins.irTx, OUTPUT);
 
     // determine region
     options = {
@@ -254,73 +261,49 @@ void StartTvBGone() {
     loopOptions(options);
 
     if (!returnToMenu) {
+        bool endingEarly = false;
+
         check(SelPress);
-        StartTvBGoneForRegion(region);
-    }
-}
 
-// Same code-sending sequence as StartTvBGone(), but skips the interactive
-// region picker -- the caller already knows which region to use. This lets
-// IR Timed Transmit ask for the region up front (before a delay countdown)
-// so the actual blast can fire unattended once the timer reaches zero,
-// without needing anyone in front of the device to answer the NA/EU prompt.
-void StartTvBGoneForRegion(uint8_t regionParam) {
-    if (!init_ir_tx_mutex()) {
-        displayRedStripe("Mutex init failed");
-        delay(2000);
-        return;
-    }
+        // Send region-specific codes
+        if (region == NA) {
+            displayTextLine("Sending NA codes...");
+            sendParsedCodeBatch(NApowerCodes, num_NAcodes, irsend);
+        } else {
+            displayTextLine("Sending EU codes...");
+            sendParsedCodeBatch(EUpowerCodes, num_EUcodes, irsend);
+        }
 
-    Serial.begin(115200);
-#ifdef USE_BOOST
-    PPM.enableOTG();
-#endif
-    checkIrTxPin();
-    IRsend irsend(bruceConfigPins.irTx);
-    irsend.begin();
-    setup_ir_pin(bruceConfigPins.irTx, OUTPUT);
+        // Send universal parsed codes if user didn't stop
+        if (!returnToMenu) {
+            displayTextLine("Sending universal parsed codes...");
+            sendParsedCodeBatch(UniversalParsedCodes, num_UniversalParsedCodes, irsend);
+        }
 
-    region = regionParam;
-    returnToMenu = false;
+        // Send universal raw codes if user didn't stop
+        if (!returnToMenu) {
+            displayTextLine("Sending universal raw codes...");
+            sendRawCodeBatch(UniversalRawCodes, num_UniversalRawCodes, irsend);
+        }
 
-    // Send region-specific codes
-    if (region == NA) {
-        displayTextLine("Sending NA codes...");
-        sendParsedCodeBatch(NApowerCodes, num_NAcodes, irsend);
-    } else {
-        displayTextLine("Sending EU codes...");
-        sendParsedCodeBatch(EUpowerCodes, num_EUcodes, irsend);
-    }
+        // Ensure final progress is shown
+        progressHandler(1, 1);
 
-    // Send universal parsed codes if user didn't stop
-    if (!returnToMenu) {
-        displayTextLine("Sending universal parsed codes...");
-        sendParsedCodeBatch(UniversalParsedCodes, num_UniversalParsedCodes, irsend);
-    }
+        if (!returnToMenu) {
+            displayTextLine("All codes sent!");
+            delay_ten_us(MAX_WAIT_TIME);
+            delay_ten_us(MAX_WAIT_TIME);
+        } else {
+            displayRedStripe("User Stopped");
+            delay(2000);
+        }
 
-    // Send universal raw codes if user didn't stop
-    if (!returnToMenu) {
-        displayTextLine("Sending universal raw codes...");
-        sendRawCodeBatch(UniversalRawCodes, num_UniversalRawCodes, irsend);
-    }
-
-    // Ensure final progress is shown
-    progressHandler(1, 1);
-
-    if (!returnToMenu) {
-        displayTextLine("All codes sent!");
-        delay_ten_us(MAX_WAIT_TIME);
-        delay_ten_us(MAX_WAIT_TIME);
-    } else {
-        displayRedStripe("User Stopped");
-        delay(2000);
-    }
-
-    // turnoff LED
-    digitalWrite(bruceConfigPins.irTx, LED_OFF);
+        // turnoff LED
+        digitalWrite(bruceConfigPins.irTx, LED_OFF);
 
 #ifdef USE_BOOST
-    /// DISABLE 5V OUTPUT
-    PPM.disableOTG();
+        /// DISABLE 5V OUTPUT
+        PPM.disableOTG();
 #endif
+    }
 }
